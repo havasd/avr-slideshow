@@ -18,10 +18,12 @@ UI_DIR = $${DESTDIR}/.ui
 
 SOURCES += \
     src/main.c \
-    src/lcdsim.c
+    src/lcdsim.c \
+    src/utils.c
 
 HEADERS += \
     src/charmap.h \
-    src/lcdsim.h
+    src/lcdsim.h \
+    src/utils.h
 
 QMAKE_CFLAGS += -std=c99
