@@ -62,6 +62,7 @@ void lcd_sim_print_line(unsigned char *dd_ram, int dd_ram_size)
 void lcd_sim_print()
 {
     lcd_sim_print_line(&lcd_ram[DD_RAM_ADDR], DD_RAM_SIZE);
-    printf("\n");
+    putchar('\n');
     lcd_sim_print_line(&lcd_ram[DD_RAM_ADDR2], DD_RAM_SIZE2);
+    putchar('\n');
 }

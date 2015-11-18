@@ -7,41 +7,9 @@
 #define MAX_LEN 1024
 #define LCD_WIDTH 16
 
-int main(void)
+
+void show(unsigned char *line0_buffer, unsigned char *line1_buffer, int buffer_index, int line_len)
 {
-    lcd_init();
-
-    const char *message = "ABC";
-
-    const int buffer_size = MAX_LEN * (CHAR_WIDTH + 1);
-    unsigned char line0_buffer[buffer_size];
-    unsigned char line1_buffer[buffer_size];
-
-    for (int i = 0; i < buffer_size; ++i) {
-        line0_buffer[i] = 0;
-        line1_buffer[i] = 0;
-    }
-
-    // Cut the string above the maximum
-    int len = MIN(strlen(message), MAX_LEN);
-
-    for (int i = 0; i < len; ++i) {
-        int ch = (int)message[i];
-        for (int j = 0; j < CHAR_WIDTH; ++j) {
-            unsigned char col0 = charmap[ch][j] & 0b1111;
-            unsigned char col1 = (charmap[ch][j] >> 4) & 0b1111;
-
-            int index = (CHAR_WIDTH + 1) * i + j;
-            line0_buffer[index] = col0;
-            line1_buffer[index] = col1;
-        }
-
-        // Insert space between characters
-        int index = (CHAR_WIDTH + 1) * i + CHAR_WIDTH;
-        line0_buffer[index] = 0x0;
-        line1_buffer[index] = 0x0;
-    }
-
     unsigned char line0_shadow[LCD_WIDTH];
     unsigned char line1_shadow[LCD_WIDTH];
 
@@ -49,9 +17,12 @@ int main(void)
     for (int i = 0; i < 16; ++i)
         pattern_freqs[i] = 0;
 
-    for (int i = 0; i < LCD_WIDTH; ++i) {
-        line0_shadow[i] = line0_buffer[i];
-        line1_shadow[i] = line1_buffer[i];
+    for (int i = 0; i < MIN(LCD_WIDTH, line_len); ++i, ++buffer_index) {
+        if (buffer_index >= line_len)
+            buffer_index = 0;
+
+        line0_shadow[i] = line0_buffer[buffer_index];
+        line1_shadow[i] = line1_buffer[buffer_index];
 
         pattern_freqs[line0_shadow[i]]++;
         pattern_freqs[line1_shadow[i]]++;
@@ -102,7 +73,6 @@ int main(void)
 
     // TODO(pvarga): Replace unloaded but used patterns by the most most similar loaded pattern in shadow memory
 
-
     lcd_send_command(DD_RAM_ADDR);
     for (int i = 0; i < LCD_WIDTH; ++i)
         lcd_send_data(pattern_map[line0_shadow[i]]);
@@ -112,6 +82,47 @@ int main(void)
         lcd_send_data(pattern_map[line1_shadow[i]]);
 
     lcd_sim_print();
+}
+
+int main(void)
+{
+    lcd_init();
+
+    const char *message = "ABCDEF";
+
+    const int buffer_size = MAX_LEN * (CHAR_WIDTH + 1);
+    unsigned char line0_buffer[buffer_size];
+    unsigned char line1_buffer[buffer_size];
+
+    for (int i = 0; i < buffer_size; ++i) {
+        line0_buffer[i] = 0;
+        line1_buffer[i] = 0;
+    }
+
+    // Cut the string above the maximum
+    int len = MIN(strlen(message), MAX_LEN);
+
+    for (int i = 0; i < len; ++i) {
+        int ch = (int)message[i];
+        for (int j = 0; j < CHAR_WIDTH; ++j) {
+            unsigned char col0 = charmap[ch][j] & 0b1111;
+            unsigned char col1 = (charmap[ch][j] >> 4) & 0b1111;
+
+            int index = (CHAR_WIDTH + 1) * i + j;
+            line0_buffer[index] = col0;
+            line1_buffer[index] = col1;
+        }
+
+        // Insert space between characters
+        int index = (CHAR_WIDTH + 1) * i + CHAR_WIDTH;
+        line0_buffer[index] = 0x0;
+        line1_buffer[index] = 0x0;
+    }
+
+    // Add extra whitespace to the end
+    const int line_len = len * (CHAR_WIDTH + 1) + 2;
+    for (int buffer_index = 0; buffer_index < line_len; ++buffer_index)
+        show(&line0_buffer[0], &line1_buffer[0], buffer_index, line_len);
 
     return 0;
 }
