@@ -91,6 +91,7 @@ void show(unsigned char *line0_buffer, unsigned char *line1_buffer, int buffer_i
 int main(void)
 {
     lcd_init();
+    buttonsim_init();
 
     const char *message = "ABCDEF";
 
@@ -123,8 +124,6 @@ int main(void)
         line1_buffer[index] = 0x0;
     }
 
-    nonblock(NB_ENABLE);
-
     // Add extra whitespace to the end
     const int line_len = len * (CHAR_WIDTH + 1) + 2;
     int buffer_index = 0;
@@ -137,13 +136,11 @@ int main(void)
         if (cycle >= 65000U)
             cycle = 0;
 
-        if (kbhit()) {
-            char c = fgetc(stdin);
-            if (c == 'q')
-                break;
-            if (c == ' ')
-                enable_slide ^= 1;
-        }
+        int button = button_pressed();
+        if (button == BUTTON_CENTER)
+            enable_slide ^= 1;
+        if (button == BUTTON_QUIT)
+            break;
 
         if (enable_slide && cycle % 1000 == 0) {
             if (++buffer_index >= line_len)
@@ -152,10 +149,12 @@ int main(void)
             show(&line0_buffer[0], &line1_buffer[0], buffer_index, line_len);
             usleep(100000);
         }
+
+        button_unlock();
     }
 
     printf("%c[18B", 27);
-    nonblock(NB_DISABLE);
+    buttonsim_terminate();
 
     return 0;
 }
