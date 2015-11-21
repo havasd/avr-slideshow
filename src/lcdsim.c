@@ -9,6 +9,9 @@ static unsigned char *ram_ptr;
 
 void lcd_init()
 {
+    printf("%cc", 27);
+    printf("\n");
+
     for (int i = 0; i < RAM_SIZE; ++i)
         lcd_ram[i] = 0;
 

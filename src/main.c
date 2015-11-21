@@ -1,8 +1,12 @@
 #include <stdio.h>
 
+#include "buttonsim.h"
 #include "charmap.h"
 #include "lcdsim.h"
 #include "utils.h"
+
+#include <stdint.h>
+#include <unistd.h>
 
 #define MAX_LEN 1024
 #define LCD_WIDTH 16
@@ -119,10 +123,39 @@ int main(void)
         line1_buffer[index] = 0x0;
     }
 
+    nonblock(NB_ENABLE);
+
     // Add extra whitespace to the end
     const int line_len = len * (CHAR_WIDTH + 1) + 2;
-    for (int buffer_index = 0; buffer_index < line_len; ++buffer_index)
-        show(&line0_buffer[0], &line1_buffer[0], buffer_index, line_len);
+    int buffer_index = 0;
+    int enable_slide = 1;
+
+    uint16_t cycle = 0;
+
+
+    while(cycle++ < UINT16_MAX) {
+        if (cycle >= 65000U)
+            cycle = 0;
+
+        if (kbhit()) {
+            char c = fgetc(stdin);
+            if (c == 'q')
+                break;
+            if (c == ' ')
+                enable_slide ^= 1;
+        }
+
+        if (enable_slide && cycle % 1000 == 0) {
+            if (++buffer_index >= line_len)
+                buffer_index = 0;
+
+            show(&line0_buffer[0], &line1_buffer[0], buffer_index, line_len);
+            usleep(100000);
+        }
+    }
+
+    printf("%c[18B", 27);
+    nonblock(NB_DISABLE);
 
     return 0;
 }

@@ -13,6 +13,8 @@ void lcd_init();
 void lcd_send_command(int command);
 void lcd_send_data(unsigned char data);
 
+// TODO: Add lcd_delay
+
 void lcd_sim_print();
 
 #endif // LCDSIM_H
