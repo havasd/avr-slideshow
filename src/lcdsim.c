@@ -62,14 +62,47 @@ void lcd_sim_print_line(unsigned char *dd_ram, int dd_ram_size)
 
 }
 
+void lcd_send_text(char *str)
+{
+    while (*str)
+        putchar(*str++);
+    fflush(stdout);
+}
+
+void lcd_send_line1(char *str)
+{
+    printf("%c[4;0H",27);
+    lcd_send_text(str);
+}
+
+void lcd_send_line2(char *str)
+{
+    printf("%c[12;0H",27);
+    lcd_send_text(str);
+}
+
+void lcd_delay(unsigned int a)
+{
+    usleep(a * 10000);
+}
+
 void lcd_sim_print()
 {
+    printf("%c[1;0H",27);
+
     // Save current cursor position
     printf("%c[s", 27);
+
     lcd_sim_print_line(&lcd_ram[DD_RAM_ADDR], DD_RAM_SIZE);
     putchar('\n');
     lcd_sim_print_line(&lcd_ram[DD_RAM_ADDR2], DD_RAM_SIZE2);
     putchar('\n');
+
     // Restore cursor position
     printf("%c[u", 27);
+}
+
+void lcd_sim_terminate()
+{
+    printf("%c[18B", 27);
 }

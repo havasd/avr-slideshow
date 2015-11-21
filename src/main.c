@@ -91,7 +91,7 @@ void show(unsigned char *line0_buffer, unsigned char *line1_buffer, int buffer_i
 int main(void)
 {
     lcd_init();
-    buttonsim_init();
+    button_sim_init();
 
     const char *message = "ABCDEF";
 
@@ -131,8 +131,15 @@ int main(void)
 
     uint16_t cycle = 0;
 
+    lcd_send_line1("  AVR SLIDESHOW");
+    lcd_send_line2("  by Peter Varga");
+    while (cycle++ < 100 && !button_pressed()) {
+        lcd_delay(1);
+        button_unlock();
+    }
 
-    while(cycle++ < UINT16_MAX) {
+    cycle = 0;
+    while (cycle++ < UINT16_MAX) {
         if (cycle >= 65000U)
             cycle = 0;
 
@@ -147,14 +154,14 @@ int main(void)
                 buffer_index = 0;
 
             show(&line0_buffer[0], &line1_buffer[0], buffer_index, line_len);
-            usleep(100000);
+            lcd_delay(10);
         }
 
         button_unlock();
     }
 
-    printf("%c[18B", 27);
-    buttonsim_terminate();
+    button_sim_terminate();
+    lcd_sim_terminate();
 
     return 0;
 }

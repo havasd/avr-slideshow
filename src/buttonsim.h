@@ -9,8 +9,8 @@
 #define BUTTON_DOWN     5
 #define BUTTON_QUIT    99
 
-void buttonsim_init();
-void buttonsim_terminate();
+void button_sim_init();
+void button_sim_terminate();
 
 int button_pressed();
 void button_unlock();

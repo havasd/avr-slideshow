@@ -41,12 +41,12 @@ void nonblock(int enable)
 }
 
 
-void buttonsim_init()
+void button_sim_init()
 {
     nonblock(1);
 }
 
-void buttonsim_terminate()
+void button_sim_terminate()
 {
     nonblock(0);
 }
