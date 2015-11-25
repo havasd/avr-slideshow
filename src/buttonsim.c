@@ -68,7 +68,7 @@ int button_pressed()
             return BUTTON_UP;
         case 'l':
         case '6':
-            return BUTTON_LEFT;
+            return BUTTON_RIGHT;
 
         case ' ':
         case '5':
