@@ -462,14 +462,17 @@ int main(void)
 
     lcd_send_line1("  AVR SLIDESHOW");
     lcd_send_line2("  by Peter Varga");
-    while (cycle++ < 100 && !button_pressed()) {
-        lcd_delay(10);
+    while (cycle++ < 10000 && !button_pressed()) {
+#ifdef NO_AVR
+        lcd_delay(0);
+#else
+        lcd_delay(100);
+#endif
         button_unlock();
     }
 
     // Show first frame before loop starts
     show(&line0_buffer[0], &line1_buffer[0], 0, line_len);
-    lcd_delay(100);
 
     cycle = 0;
     while (cycle++ < UINT16_MAX) {
@@ -484,12 +487,16 @@ int main(void)
             break;
 #endif
 
-        if (enable_slide && cycle % 1000 == 0) {
+        if (enable_slide && cycle % 5000 == 0) {
             if (++buffer_index >= line_len)
                 buffer_index = 0;
 
             show(&line0_buffer[0], &line1_buffer[0], buffer_index, line_len);
-            lcd_delay(100);
+#ifdef NO_AVR
+            lcd_delay(70);
+#else
+            lcd_delay(10);
+#endif
         }
 
         button_unlock();
