@@ -14,7 +14,17 @@ void lcd_init()
     printf("\n");
 
     for (int i = 0; i < RAM_SIZE; ++i)
-        lcd_ram[i] = 0;
+        lcd_ram[i] = 0x0;
+
+    int base = 0;
+    base = CG_RAM_ADDR + '?' * 8;
+    lcd_ram[base + 0] = 0b01110000;
+    lcd_ram[base + 1] = 0b10001000;
+    lcd_ram[base + 2] = 0b00001000;
+    lcd_ram[base + 3] = 0b00010000;
+    lcd_ram[base + 4] = 0b00100000;
+    lcd_ram[base + 5] = 0b00000000;
+    lcd_ram[base + 6] = 0b00100000;
 
     ram_ptr = 0;
 }
@@ -60,7 +70,6 @@ void lcd_sim_print_line(unsigned char *dd_ram, int dd_ram_size)
         }
         putchar('\n');
     }
-
 }
 
 void lcd_send_text(char *str)
