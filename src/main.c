@@ -170,7 +170,8 @@ int main(void)
     lcd_init();
     button_sim_init();
 
-    const char *message = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    //const char *message = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const char *message = "1234567890";
 
     const int buffer_size = MAX_LEN * (CHAR_WIDTH + 1);
     unsigned char line0_buffer[buffer_size];
