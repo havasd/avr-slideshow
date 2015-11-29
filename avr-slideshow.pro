@@ -26,6 +26,8 @@ HEADERS += \
     src/charmap.h \
     src/lcdsim.h \
     src/utils.h \
-    src/buttonsim.h
+    src/buttonsim.h \
+    src/lcd.h
 
 QMAKE_CFLAGS += -std=c99
+DEFINES += NO_AVR

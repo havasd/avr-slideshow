@@ -1,6 +1,6 @@
 #include "utils.h"
 
-#ifdef NO_STDLIB
+#ifndef NO_AVR
 int strlen(const char *str)
 {
     int len = 0;

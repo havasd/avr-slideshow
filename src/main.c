@@ -1,14 +1,196 @@
-#include <stdio.h>
+/**
+ * AVR Slideshow
+ * by Peter Varga
+ */
 
+#ifdef NO_AVR
+#include <stdio.h>
+#include <stdlib.h>
 #include "buttonsim.h"
-#include "charmap.h"
 #include "lcdsim.h"
-#include "utils.h"
+#else
+#include "avr/io.h"
+#include "lcd.h"
+#endif // NO_AVR
 
 #include <stdint.h>
+#include "charmap.h"
+#include "utils.h"
 
-#define MAX_LEN 1024
+#ifndef NO_AVR
+#define __AVR_ATMEGA128__ 1
+
+#define CG_RAM_ADDR       0x40
+
+#define BUTTON_NONE   0
+#define BUTTON_CENTER 1
+#define BUTTON_LEFT   2
+#define BUTTON_RIGHT  3
+#define BUTTON_UP     4
+#endif // NO_AVR
+
+#define MAX_LEN 128
 #define LCD_WIDTH 16
+
+#ifndef NO_AVR
+// GENERAL INIT - USED BY ALMOST EVERYTHING ----------------------------------
+
+static void port_init() {
+  PORTA = 0b00000000; DDRA = 0b01000000; // buttons
+  PORTB = 0b00000000; DDRB = 0b00000000;
+  PORTC = 0b00000000; DDRC = 0b11110111; // lcd
+  PORTD = 0b11000000; DDRD = 0b00001000;
+  PORTE = 0b00100000; DDRE = 0b00110000; // buzzer
+  PORTF = 0b00000000; DDRF = 0b00000000;
+  PORTG = 0b00000000; DDRG = 0b00000000;
+}
+
+// TIMER-BASED RANDOM NUMBER GENERATOR ---------------------------------------
+
+static void rnd_init() {
+  TCCR0 |= (1  << CS00);  // Timer 0 no prescaling (@FCPU)
+  TCNT0 = 0;              // init counter
+}
+
+// generate a value between 0 and max
+static int rnd_gen(int max) {
+  return TCNT0 % max;
+}
+
+// BUTTON HANDLING -----------------------------------------------------------
+static int button_accept = 1;
+
+static int button_pressed() {
+  // right
+  if (!(PINA & 0b00000001) & button_accept) { // check state of button 1 and value of button_accept
+    button_accept = 0; // button is pressed
+    return BUTTON_RIGHT;
+  }
+
+  // up
+  if (!(PINA & 0b00000010) & button_accept) { // check state of button 2 and value of button_accept
+    button_accept = 0; // button is pressed
+    return BUTTON_UP;
+  }
+
+  // center
+  if (!(PINA & 0b00000100) & button_accept) { // check state of button 2 and value of button_accept
+    button_accept = 0; // button is pressed
+    return BUTTON_CENTER;
+  }
+
+  // left
+  if (!(PINA & 0b00010000) & button_accept) { // check state of button 5 and value of button_accept
+    button_accept = 0; // button is pressed
+    return BUTTON_LEFT;
+  }
+
+  return BUTTON_NONE;
+}
+
+static void button_unlock() {
+  //check state of all buttons
+  if (
+    ((PINA & 0b00000001)
+    |(PINA & 0b00000010)
+    |(PINA & 0b00000100)
+    |(PINA & 0b00001000)
+    |(PINA & 0b00010000)) == 31)
+  button_accept = 1; //if all buttons are released button_accept gets value 1
+}
+
+static int button_released() {
+    button_unlock();
+    return button_accept;
+}
+
+// LCD HELPERS ---------------------------------------------------------------
+
+static void lcd_delay(unsigned int a) {
+  while (a)
+    a--;
+}
+
+static void lcd_pulse() {
+  PORTC = PORTC | 0b00000100; //set E to high
+  //lcd_delay(1400);          //delay ~110ms
+  lcd_delay(700);
+  PORTC = PORTC & 0b11111011; //set E to low
+}
+
+static void lcd_send(int command, unsigned char a) {
+  unsigned char data;
+
+  data = 0b00001111 | a;                //get high 4 bits
+  PORTC = (PORTC | 0b11110000) & data;  //set D4-D7
+  if (command)
+    PORTC = PORTC & 0b11111110;         //set RS port to 0 -> display set to command mode
+  else
+    PORTC = PORTC | 0b00000001;         //set RS port to 1 -> display set to data mode
+  lcd_pulse();                          //pulse to set D4-D7 bits
+
+  data = a<<4;                          //get low 4 bits
+  PORTC = (PORTC & 0b00001111) | data;  //set D4-D7
+  if (command)
+    PORTC = PORTC & 0b11111110;         //set RS port to 0 -> display set to command mode
+  else
+    PORTC = PORTC | 0b00000001;         //set RS port to 1 -> display set to data mode
+  lcd_pulse();                          //pulse to set d4-d7 bits
+}
+
+static void lcd_send_command(unsigned char a) {
+  lcd_send(1, a);
+}
+
+static void lcd_send_data(unsigned char a) {
+  lcd_send(0, a);
+}
+
+static void lcd_init() {
+  //LCD initialization
+  //step by step (from Gosho) - from DATASHEET
+
+  PORTC = PORTC & 0b11111110;
+
+  lcd_delay(10000);
+
+  PORTC = 0b00110000;   //set D4, D5 port to 1
+  lcd_pulse();          //high->low to E port (pulse)
+  lcd_delay(1000);
+
+  PORTC = 0b00110000;   //set D4, D5 port to 1
+  lcd_pulse();          //high->low to E port (pulse)
+  lcd_delay(1000);
+
+  PORTC = 0b00110000;   //set D4, D5 port to 1
+  lcd_pulse();          //high->low to E port (pulse)
+  lcd_delay(1000);
+
+  PORTC = 0b00100000;   //set D4 to 0, D5 port to 1
+  lcd_pulse();          //high->low to E port (pulse)
+
+  lcd_send_command(DISP_ON);    // Turn ON Display
+  lcd_send_command(CLR_DISP);   // Clear Display
+}
+
+static void lcd_send_text(char *str) {
+  while (*str)
+    lcd_send_data(*str++);
+}
+
+static void lcd_send_line1(char *str) {
+  lcd_send_command(DD_RAM_ADDR);
+  lcd_send_text(str);
+}
+
+static void lcd_send_line2(char *str) {
+  lcd_send_command(DD_RAM_ADDR2);
+  lcd_send_text(str);
+}
+#endif // NO_AVR
+
+
+// CUSTOM STUFF --------------------------------------------------------------
 
 static unsigned char pattern_map[16];
 
@@ -77,10 +259,16 @@ void fill_cg_buffer(unsigned char cg_buffer[8], unsigned char patterns[16])
 
             // No more free slot
             if (cg_pos == 7) {
-                //lcd_send_line1("  !!! ERROR !!! ");
-                //lcd_send_line2("CG RAM BUFFER   ");
+#ifdef NO_AVR
+                button_sim_terminate();
+                lcd_sim_terminate();
+
                 fprintf(stderr, "CG RAM BUFFER ERROR\n");
-                return;
+#else
+                lcd_send_line1("  !!! ERROR !!! ");
+                lcd_send_line2("CG RAM BUFFER   ");
+#endif
+                exit(1);
             }
         }
 
@@ -215,17 +403,24 @@ void show(unsigned char *line0_buffer, unsigned char *line1_buffer, int buffer_i
     for (int i = 0; i < LCD_WIDTH; ++i)
         lcd_send_data(pattern_map[line1_shadow[i]]);
 
+#ifdef NO_AVR
     lcd_sim_print();
+#endif
 }
+
+
+// MAIN ENTRY POINT ----------------------------------------------------------
 
 int main(void)
 {
-    lcd_init();
+#ifdef NO_AVR
     button_sim_init();
+#else
+    port_init();
+#endif
+    lcd_init();
 
-    //const char *message = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    //const char *message = "1234567890";
-    const char *message = "GHIJ";
+    const char *message = "EMBEDDED SYSTEMS AVR BOARD AMOTEC HD44780 16x2 LCD DEMO 2015-12-03";
 
     const int buffer_size = MAX_LEN * (CHAR_WIDTH + 1);
     unsigned char line0_buffer[buffer_size];
@@ -284,8 +479,10 @@ int main(void)
         int button = button_pressed();
         if (button == BUTTON_CENTER)
             enable_slide ^= 1;
+#ifdef NO_AVR
         if (button == BUTTON_QUIT)
             break;
+#endif
 
         if (enable_slide && cycle % 1000 == 0) {
             if (++buffer_index >= line_len)
@@ -298,8 +495,10 @@ int main(void)
         button_unlock();
     }
 
+#ifdef NO_AVR
     button_sim_terminate();
     lcd_sim_terminate();
+#endif
 
     return 0;
 }
