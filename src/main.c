@@ -97,11 +97,11 @@ void fill_cg_buffer(unsigned char cg_buffer[8], unsigned char patterns[16])
 }
 
 // Load first 8 patterns to the CG RAM (if non-zero!)
-void update_cg_ram(unsigned char cg_buffer[8], int pattern_freqs[16])
+void update_cg_ram(unsigned char cg_buffer[8])
 {
     for (int i = 0; i < 8; ++i) {
         unsigned char pattern = cg_buffer[i];
-        if (!pattern_freqs[pattern])
+        if (!pattern)
             break;
 
         // Pattern is already in CG RAM
@@ -120,6 +120,40 @@ void update_cg_ram(unsigned char cg_buffer[8], int pattern_freqs[16])
             lcd_send_data(row);
         }
     }
+}
+
+unsigned char diff_bits_in_pattern(unsigned char a, unsigned char b)
+{
+    unsigned char count = 0;
+
+    count += (0x01 & (a >> 0)) ^ (0x01 & (b >> 0));
+    count += (0x01 & (a >> 1)) ^ (0x01 & (b >> 1));
+    count += (0x01 & (a >> 2)) ^ (0x01 & (b >> 2));
+    count += (0x01 & (a >> 3)) ^ (0x01 & (b >> 3));
+
+    return count;
+}
+
+
+unsigned char find_similar_pattern(unsigned char unloaded_pattern, unsigned char cg_buffer[8])
+{
+    unsigned char similar_pattern = 0x0;
+    unsigned char min_diff = diff_bits_in_pattern(unloaded_pattern, similar_pattern);
+
+    if (min_diff <= 1)
+        return 0x0;
+
+    for (int i = 0; i < 8; ++i) {
+        unsigned char cg_pattern = cg_buffer[i];
+        unsigned char diff = diff_bits_in_pattern(unloaded_pattern, cg_pattern);
+
+        if (diff < min_diff) {
+            min_diff = diff;
+            similar_pattern = cg_pattern;
+        }
+    }
+
+    return similar_pattern;
 }
 
 void show(unsigned char *line0_buffer, unsigned char *line1_buffer, int buffer_index, int line_len)
@@ -149,9 +183,29 @@ void show(unsigned char *line0_buffer, unsigned char *line1_buffer, int buffer_i
     unsigned char cg_buffer[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
     fill_cg_buffer(cg_buffer, patterns);
 
-    update_cg_ram(cg_buffer, pattern_freqs);
+    update_cg_ram(cg_buffer);
 
-    // TODO(pvarga): Replace unloaded but used patterns by the most most similar loaded pattern in shadow memory
+    // Last element of cg_buffer is set -> there might be unloaded patterns
+    if (cg_buffer[7]) {
+        // Replace unloaded but used patterns by the most most similar loaded pattern in shadow memory
+        for (int i = 8; i < 15; ++i) {
+            unsigned char unloaded_pattern = patterns[i];
+            if (!pattern_freqs[unloaded_pattern])
+                break;
+
+            // Find most similar pattern in CG RAM
+            unsigned char similar_pattern = find_similar_pattern(unloaded_pattern, cg_buffer);
+
+            // Replace occurences of unloaded pattern in shadow memory
+            for (int j = 0; j < LCD_WIDTH; ++j) {
+                if (line0_shadow[j] == unloaded_pattern)
+                    line0_shadow[j] = similar_pattern;
+
+                if (line1_shadow[j] == unloaded_pattern)
+                    line1_shadow[j] = similar_pattern;
+            }
+        }
+    }
 
     lcd_send_command(DD_RAM_ADDR);
     for (int i = 0; i < LCD_WIDTH; ++i)
@@ -171,7 +225,7 @@ int main(void)
 
     //const char *message = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     //const char *message = "1234567890";
-    const char *message = "FGHIJKL";
+    const char *message = "GHIJ";
 
     const int buffer_size = MAX_LEN * (CHAR_WIDTH + 1);
     unsigned char line0_buffer[buffer_size];
@@ -207,7 +261,7 @@ int main(void)
     // Add extra whitespace to the end
     const int line_len = len * (CHAR_WIDTH + 1) + 2;
     int buffer_index = 0;
-    int enable_slide = 1;
+    int enable_slide = (line_len - 3) > LCD_WIDTH;
 
     uint16_t cycle = 0;
 
@@ -217,6 +271,10 @@ int main(void)
         lcd_delay(10);
         button_unlock();
     }
+
+    // Show first frame before loop starts
+    show(&line0_buffer[0], &line1_buffer[0], 0, line_len);
+    lcd_delay(100);
 
     cycle = 0;
     while (cycle++ < UINT16_MAX) {
