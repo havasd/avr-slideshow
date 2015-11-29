@@ -1,7 +1,8 @@
 #include "lcdsim.h"
 
-#include "stdio.h"
-#include "stdlib.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/time.h>
 
 #define RAM_SIZE CG_RAM_SIZE + DD_RAM_SIZE + DD_RAM_SIZE2
 static unsigned char lcd_ram[RAM_SIZE];
@@ -81,9 +82,12 @@ void lcd_send_line2(char *str)
     lcd_send_text(str);
 }
 
-void lcd_delay(unsigned int a)
+void lcd_delay(unsigned msec)
 {
-    usleep(a * 10000);
+    struct timespec t;
+    t.tv_sec = (unsigned)(msec / 1000);
+    t.tv_nsec = (msec - (t.tv_sec * 1000)) * 1000000;
+    nanosleep(&t, NULL);
 }
 
 void lcd_sim_print()

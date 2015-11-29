@@ -1,5 +1,6 @@
 #include "utils.h"
 
+#ifdef NO_STDLIB
 int strlen(const char *str)
 {
     int len = 0;
@@ -9,3 +10,4 @@ int strlen(const char *str)
 
     return len;
 }
+#endif

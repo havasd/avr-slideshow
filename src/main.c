@@ -6,7 +6,6 @@
 #include "utils.h"
 
 #include <stdint.h>
-#include <unistd.h>
 
 #define MAX_LEN 1024
 #define LCD_WIDTH 16
@@ -214,7 +213,7 @@ int main(void)
     lcd_send_line1("  AVR SLIDESHOW");
     lcd_send_line2("  by Peter Varga");
     while (cycle++ < 100 && !button_pressed()) {
-        lcd_delay(1);
+        lcd_delay(10);
         button_unlock();
     }
 
@@ -234,7 +233,7 @@ int main(void)
                 buffer_index = 0;
 
             show(&line0_buffer[0], &line1_buffer[0], buffer_index, line_len);
-            lcd_delay(10);
+            lcd_delay(100);
         }
 
         button_unlock();
