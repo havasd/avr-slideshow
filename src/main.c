@@ -78,15 +78,22 @@ void fill_cg_buffer(unsigned char cg_buffer[8], unsigned char patterns[16])
 
             // No more free slot
             if (cg_pos == 7) {
-                //lcd_send_line1("!!! ERROR !!!");
-                //lcd_send_line2("CG RAM BUFFER FULL");
+                //lcd_send_line1("  !!! ERROR !!! ");
+                //lcd_send_line2("CG RAM BUFFER   ");
                 fprintf(stderr, "CG RAM BUFFER ERROR\n");
                 return;
             }
         }
 
         cg_buffer[cg_pos] = pattern;
+        stored_mask |= 1 << pattern;
         reserved_mask |= 1 << cg_pos;
+    }
+
+    for (int i = 1; i < 16; ++i) {
+        if (stored_mask & (1 << i))
+            continue;
+        pattern_map[i] = '?';
     }
 }
 
@@ -99,7 +106,7 @@ void update_cg_ram(unsigned char cg_buffer[8], int pattern_freqs[16])
             break;
 
         // Pattern is already in CG RAM
-        if (cg_buffer[i] == pattern_map[i])
+        if (pattern_map[pattern] == i)
             continue;
 
         pattern_map[pattern] = i;
@@ -163,7 +170,7 @@ int main(void)
     lcd_init();
     button_sim_init();
 
-    const char *message = "ABCDEF";
+    const char *message = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
     const int buffer_size = MAX_LEN * (CHAR_WIDTH + 1);
     unsigned char line0_buffer[buffer_size];
