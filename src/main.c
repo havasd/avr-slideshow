@@ -420,7 +420,7 @@ int main(void)
 #endif
     lcd_init();
 
-    const char *message = "EMBEDDED SYSTEMS AVR BOARD AMOTEC HD44780 16x2 LCD DEMO 2015-12-03";
+    const char *message = "=+= EMBEDDED SYSTEMS AVR BOARD AMOTEC HD44780 16x2 LCD DEMO 2015-12-03 =+=";
 
     const int buffer_size = MAX_LEN * (CHAR_WIDTH + 1);
     unsigned char line0_buffer[buffer_size];
