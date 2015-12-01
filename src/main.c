@@ -193,6 +193,7 @@ static void lcd_send_line2(char *str) {
 // CUSTOM STUFF --------------------------------------------------------------
 
 static unsigned char pattern_map[16];
+static int flip;
 
 // Key: Pattern
 // Value: Offset in CG RAM or character in ROM
@@ -344,6 +345,22 @@ unsigned char find_similar_pattern(unsigned char unloaded_pattern, unsigned char
     return similar_pattern;
 }
 
+unsigned char flip_pattern(unsigned char pattern)
+{
+    if (!pattern)
+        return 0;
+
+    unsigned char orig_pattern = pattern;
+    pattern = 0;
+
+    pattern |= (0x1 & orig_pattern) << 3;
+    pattern |= (0x2 & orig_pattern) << 1;
+    pattern |= (0x4 & orig_pattern) >> 1;
+    pattern |= (0x8 & orig_pattern) >> 3;
+
+    return pattern;
+}
+
 void show(unsigned char *line0_buffer, unsigned char *line1_buffer, int buffer_index, int line_len)
 {
     unsigned char line0_shadow[LCD_WIDTH];
@@ -358,8 +375,13 @@ void show(unsigned char *line0_buffer, unsigned char *line1_buffer, int buffer_i
         if (buffer_index >= line_len)
             buffer_index = 0;
 
-        line0_shadow[i] = line0_buffer[buffer_index];
-        line1_shadow[i] = line1_buffer[buffer_index];
+        if (flip) {
+            line1_shadow[i] = flip_pattern(line0_buffer[buffer_index]);
+            line0_shadow[i] = flip_pattern(line1_buffer[buffer_index]);
+        } else {
+            line0_shadow[i] = line0_buffer[buffer_index];
+            line1_shadow[i] = line1_buffer[buffer_index];
+        }
 
         pattern_freqs[line0_shadow[i]]++;
         pattern_freqs[line1_shadow[i]]++;
@@ -452,6 +474,7 @@ int main(void)
     }
 
     init_pattern_map();
+    flip = 0;
 
     // Add extra whitespace to the end
     const int line_len = len * (CHAR_WIDTH + 1) + 2;
@@ -482,6 +505,8 @@ int main(void)
         int button = button_pressed();
         if (button == BUTTON_CENTER)
             enable_slide ^= 1;
+        if (button == BUTTON_UP || button == BUTTON_DOWN)
+            flip ^= 1;
 #ifdef NO_AVR
         if (button == BUTTON_QUIT)
             break;
