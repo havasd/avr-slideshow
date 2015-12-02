@@ -498,7 +498,7 @@ int main(void)
     init_pattern_map();
 
     // Add extra whitespace to the end
-    const int line_len = len * (CHAR_WIDTH + 1) + 2;
+    const int line_len = MAX(len * (CHAR_WIDTH + 1) + 2, LCD_WIDTH);
     int buffer_index = 0;
     int enable_slide = (line_len - 3) > LCD_WIDTH;
 
