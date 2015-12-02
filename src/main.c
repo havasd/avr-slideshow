@@ -430,6 +430,26 @@ void show(unsigned char *line0_buffer, unsigned char *line1_buffer, int buffer_i
 #endif
 }
 
+void mirror_patterns(unsigned char *patterns0, unsigned char *patterns1)
+{
+    unsigned char tmp;
+    for (int i = 0; i < CHAR_WIDTH / 2; ++i) {
+        tmp = patterns0[i];
+        patterns0[i] = patterns0[CHAR_WIDTH-i-1];
+        patterns0[CHAR_WIDTH-i-1] = tmp;
+
+        tmp = patterns1[i];
+        patterns1[i] = patterns1[CHAR_WIDTH-i-1];
+        patterns1[CHAR_WIDTH-i-1] = tmp;
+    }
+}
+
+void mirror(unsigned char *line0_buffer, unsigned char *line1_buffer, int line_len)
+{
+    for (int i = 0; i < line_len; i += CHAR_WIDTH + 1)
+        mirror_patterns(&line0_buffer[i], &line1_buffer[i]);
+}
+
 
 // MAIN ENTRY POINT ----------------------------------------------------------
 
@@ -507,6 +527,8 @@ int main(void)
             enable_slide ^= 1;
         if (button == BUTTON_UP || button == BUTTON_DOWN)
             flip ^= 1;
+        if (button == BUTTON_LEFT || button == BUTTON_RIGHT)
+            mirror(&line0_buffer[0], &line1_buffer[0], line_len);
 #ifdef NO_AVR
         if (button == BUTTON_QUIT)
             break;
