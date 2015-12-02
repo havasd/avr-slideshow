@@ -193,7 +193,6 @@ static void lcd_send_line2(char *str) {
 // CUSTOM STUFF --------------------------------------------------------------
 
 static unsigned char pattern_map[16];
-static int flip;
 
 // Key: Pattern
 // Value: Offset in CG RAM or character in ROM
@@ -345,22 +344,6 @@ unsigned char find_similar_pattern(unsigned char unloaded_pattern, unsigned char
     return similar_pattern;
 }
 
-unsigned char flip_pattern(unsigned char pattern)
-{
-    if (!pattern)
-        return 0;
-
-    unsigned char orig_pattern = pattern;
-    pattern = 0;
-
-    pattern |= (0x1 & orig_pattern) << 3;
-    pattern |= (0x2 & orig_pattern) << 1;
-    pattern |= (0x4 & orig_pattern) >> 1;
-    pattern |= (0x8 & orig_pattern) >> 3;
-
-    return pattern;
-}
-
 void show(unsigned char *line0_buffer, unsigned char *line1_buffer, int buffer_index, int line_len)
 {
     unsigned char line0_shadow[LCD_WIDTH];
@@ -375,13 +358,8 @@ void show(unsigned char *line0_buffer, unsigned char *line1_buffer, int buffer_i
         if (buffer_index >= line_len)
             buffer_index = 0;
 
-        if (flip) {
-            line1_shadow[i] = flip_pattern(line0_buffer[buffer_index]);
-            line0_shadow[i] = flip_pattern(line1_buffer[buffer_index]);
-        } else {
-            line0_shadow[i] = line0_buffer[buffer_index];
-            line1_shadow[i] = line1_buffer[buffer_index];
-        }
+        line0_shadow[i] = line0_buffer[buffer_index];
+        line1_shadow[i] = line1_buffer[buffer_index];
 
         pattern_freqs[line0_shadow[i]]++;
         pattern_freqs[line1_shadow[i]]++;
@@ -429,6 +407,33 @@ void show(unsigned char *line0_buffer, unsigned char *line1_buffer, int buffer_i
     lcd_sim_print();
 #endif
 }
+
+unsigned char invert_pattern(unsigned char pattern)
+{
+    if (!pattern)
+        return 0;
+
+    unsigned char orig_pattern = pattern;
+    pattern = 0;
+
+    pattern |= (0x1 & orig_pattern) << 3;
+    pattern |= (0x2 & orig_pattern) << 1;
+    pattern |= (0x4 & orig_pattern) >> 1;
+    pattern |= (0x8 & orig_pattern) >> 3;
+
+    return pattern;
+}
+
+void upsidedown(unsigned char *line0_buffer, unsigned char *line1_buffer, int line_len)
+{
+    unsigned char tmp;
+    for (int i = 0; i < line_len; ++i) {
+        tmp = invert_pattern(line0_buffer[i]);
+        line0_buffer[i] = invert_pattern(line1_buffer[i]);
+        line1_buffer[i] = tmp;
+    }
+}
+
 
 void mirror_patterns(unsigned char *patterns0, unsigned char *patterns1)
 {
@@ -479,12 +484,9 @@ int main(void)
     for (int i = 0; i < len; ++i) {
         int ch = (int)message[i];
         for (int j = 0; j < CHAR_WIDTH; ++j) {
-            unsigned char col0 = charmap[ch][j] & 0b1111;
-            unsigned char col1 = (charmap[ch][j] >> 4) & 0b1111;
-
             int index = (CHAR_WIDTH + 1) * i + j;
-            line0_buffer[index] = col0;
-            line1_buffer[index] = col1;
+            line0_buffer[index] = charmap[ch][j] & 0b1111;
+            line1_buffer[index] = (charmap[ch][j] >> 4) & 0b1111;
         }
 
         // Insert space between characters
@@ -494,7 +496,6 @@ int main(void)
     }
 
     init_pattern_map();
-    flip = 0;
 
     // Add extra whitespace to the end
     const int line_len = len * (CHAR_WIDTH + 1) + 2;
@@ -526,7 +527,7 @@ int main(void)
         if (button == BUTTON_CENTER)
             enable_slide ^= 1;
         if (button == BUTTON_UP || button == BUTTON_DOWN)
-            flip ^= 1;
+            upsidedown(&line0_buffer[0], &line1_buffer[0], line_len);
         if (button == BUTTON_LEFT || button == BUTTON_RIGHT)
             mirror(&line0_buffer[0], &line1_buffer[0], line_len);
 #ifdef NO_AVR
