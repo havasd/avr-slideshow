@@ -533,10 +533,16 @@ int main(void)
         int button = button_pressed();
         if (button == BUTTON_CENTER)
             enable_slide ^= 1;
-        if (button == BUTTON_UP || button == BUTTON_DOWN)
+        if (button == BUTTON_UP || button == BUTTON_DOWN) {
             upsidedown(&line0_buffer[0], &line1_buffer[0], line_len);
-        if (button == BUTTON_LEFT || button == BUTTON_RIGHT)
+            if (!enable_slide)
+                show(&line0_buffer[0], &line1_buffer[0], buffer_index, line_len);
+        }
+        if (button == BUTTON_LEFT || button == BUTTON_RIGHT) {
             mirror(&line0_buffer[0], &line1_buffer[0], line_len);
+            if (!enable_slide)
+                show(&line0_buffer[0], &line1_buffer[0], buffer_index, line_len);
+        }
 #ifdef NO_AVR
         if (button == BUTTON_QUIT)
             break;
