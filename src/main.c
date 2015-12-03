@@ -5,7 +5,6 @@
 
 #ifdef NO_AVR
 #include <stdio.h>
-#include <stdlib.h>
 #include "buttonsim.h"
 #include "lcdsim.h"
 #else
@@ -14,6 +13,7 @@
 #endif // NO_AVR
 
 #include <stdint.h>
+#include <stdlib.h>
 #include "charmap.h"
 #include "utils.h"
 
@@ -27,6 +27,7 @@
 #define BUTTON_LEFT   2
 #define BUTTON_RIGHT  3
 #define BUTTON_UP     4
+#define BUTTON_DOWN   5
 #endif // NO_AVR
 
 #define MAX_LEN 128
@@ -61,28 +62,34 @@ static int rnd_gen(int max) {
 static int button_accept = 1;
 
 static int button_pressed() {
-  // right
+  // down
   if (!(PINA & 0b00000001) & button_accept) { // check state of button 1 and value of button_accept
+    button_accept = 0; // button is pressed
+    return BUTTON_DOWN;
+  }
+
+  // left
+  if (!(PINA & 0b00000010) & button_accept) { // check state of button 2 and value of button_accept
+    button_accept = 0; // button is pressed
+    return BUTTON_LEFT;
+  }
+
+  // center
+  if (!(PINA & 0b00000100) & button_accept) { // check state of button 3 and value of button_accept
+    button_accept = 0; // button is pressed
+    return BUTTON_CENTER;
+  }
+
+  // right
+  if (!(PINA & 0b00001000) & button_accept) { // check state of button 4 and value of button_accept
     button_accept = 0; // button is pressed
     return BUTTON_RIGHT;
   }
 
   // up
-  if (!(PINA & 0b00000010) & button_accept) { // check state of button 2 and value of button_accept
-    button_accept = 0; // button is pressed
-    return BUTTON_UP;
-  }
-
-  // center
-  if (!(PINA & 0b00000100) & button_accept) { // check state of button 2 and value of button_accept
-    button_accept = 0; // button is pressed
-    return BUTTON_CENTER;
-  }
-
-  // left
   if (!(PINA & 0b00010000) & button_accept) { // check state of button 5 and value of button_accept
     button_accept = 0; // button is pressed
-    return BUTTON_LEFT;
+    return BUTTON_UP;
   }
 
   return BUTTON_NONE;
