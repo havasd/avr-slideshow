@@ -17,7 +17,7 @@ UI_DIR = $${DESTDIR}/.ui
 
 
 SOURCES += \
-    src/main.c \
+    src/AVRInvaders.c \
     src/lcdsim.c \
     src/utils.c \
     src/buttonsim.c
