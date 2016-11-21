@@ -391,7 +391,8 @@ static void move_aliens() {
 static void move_left() {
     move_aliens();
     ROW2[0] = CHAR_ERROR;
-    int *elem = &CHARMAP[1][7];
+    //*(CHARMAP+row)+column)
+    int *elem = (int *)CHARMAP + 2 * 8;
     for (int i = 16; i > 0; --i) {
         // we are at the edge of the left side
         if (*elem != 0)
@@ -399,6 +400,7 @@ static void move_left() {
         if (*(elem - 1) != 0) {
             *elem = *(elem - 1);
         }
+        --elem;
     }
     chars_cannon_rewrite();
 }
