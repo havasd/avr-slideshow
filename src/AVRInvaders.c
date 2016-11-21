@@ -81,6 +81,7 @@ typedef struct {
 
 static tune_t TUNE_START[] = { { 2000, 40 }, { 0, 0 } };
 static tune_t TUNE_LEVELUP[] = { { 3000, 20 }, { 0, 0 } };
+static tune_t TUNE_SHOOT[] = { { 5000, 10 }, { 0, 0 } };
 static tune_t TUNE_GAMEOVER[] = { { 1000, 200 }, { 1500, 200 }, { 2000, 400 }, { 0, 0 } };
 
 static void play_note(int freq, int len) {
@@ -104,16 +105,16 @@ static void play_tune(tune_t *tune) {
 static int button_accept = 1;
 
 static int button_pressed() {
-  // down
+  // up
   if (!(PINA & 0b00000001) & button_accept) { // check state of button 1 and value of button_accept
     button_accept = 0; // button is pressed
-    return BUTTON_DOWN;
+    return BUTTON_RIGHT;
   }
 
   // left
   if (!(PINA & 0b00000010) & button_accept) { // check state of button 2 and value of button_accept
     button_accept = 0; // button is pressed
-    return BUTTON_LEFT;
+    return BUTTON_UP;
   }
 
   // center
@@ -125,13 +126,13 @@ static int button_pressed() {
   // right
   if (!(PINA & 0b00001000) & button_accept) { // check state of button 4 and value of button_accept
     button_accept = 0; // button is pressed
-    return BUTTON_RIGHT;
+    return BUTTON_DOWN;
   }
 
-  // up
+  // down
   if (!(PINA & 0b00010000) & button_accept) { // check state of button 5 and value of button_accept
     button_accept = 0; // button is pressed
-    return BUTTON_UP;
+    return BUTTON_LEFT;
   }
 
   return BUTTON_NONE;
@@ -242,21 +243,21 @@ static void lcd_send_line2(char *str) {
 
 typedef struct {
     int	delay;
-    int rows;
+    int kills;
 } level_t;
 
 #define LEVEL_NUM 6
-static level_t LEVELS[] = { { 5, 5 }, { 4, 10 }, { 3, 15 }, { 2, 20 }, { 1, 30 }, { 0, 0 } };
+static level_t LEVELS[] = { { 30, 5 }, { 25, 10 }, { 20, 15 }, { 15, 20 }, { 10, 30 }, { 0, 0 } };
 static int level_current = 0;
 static int delay_cycle;
 
-static void row_removed() {
+static void kill_allien() {
     // do nothing if already at top speed
     if (level_current == LEVEL_NUM-1)
         return;
 
     // if enough rows removed, increase speed
-    if (--LEVELS[level_current].rows == 0) {
+    if (--LEVELS[level_current].kills == 0) {
         ++level_current;
 #ifndef NO_AVR
         play_tune(TUNE_LEVELUP);
@@ -264,74 +265,14 @@ static void row_removed() {
     }
 }
 
-// PATTERNS AND PLAYFIELD ----------------------------------------------------
-/* Vertical axis: 0 is top row, increments downwards
- * Horizontal axis: 0 is right column, increments leftwards */
-
-#define PATTERN_NUM		4
-#define PATTERN_SIZE	2
-static unsigned char PATTERNS[PATTERN_NUM][PATTERN_SIZE] = { { 0b01, 0b00 }, { 0b01, 0b01 }, { 0b01, 0b11 }, { 0b11, 0b11 } };
-
-static unsigned char current_pattern[PATTERN_SIZE];
-static int current_row;
-static int current_col;
-
-// Actually, 1 row taller and 2 columns wider, which extras are filled with ones to help collision detection
-#define PLAYFIELD_ROWS	16
-#define PLAYFIELD_COLS	4
-static unsigned char playfield[PLAYFIELD_ROWS + 1];
-
-static void playfield_clear() {
-    for (int r = 0; r < PLAYFIELD_ROWS; ++r)
-        playfield[r] = 0b100001;
-    playfield[PLAYFIELD_ROWS] = 0b111111;
-}
-
-static void merge_current_pattern_to_playfield() {
-    // merge current piece to playfield
-    for (int p = 0; p < PATTERN_SIZE; ++p)
-        playfield[current_row + p] |= current_pattern[p] << (current_col + 1);
-    // remove full lines and drop lines above
-    for (int r = 0; r < PLAYFIELD_ROWS; ++r) {
-        if (playfield[r] == 0b111111) {
-            for (int rr = r; rr > 0; --rr)
-                playfield[rr] = playfield[rr - 1];
-            playfield[0] = 0b100001;
-            row_removed(); // let's see whether we should increase the speed
-        }
-    }
-}
-
-static int collision(char *pattern, int row, int col) {
-    int result = 0;
-    for (int r = 0; r < PATTERN_SIZE; ++r)
-        result |= playfield[row + r] & (pattern[r] << (col + 1));
-    return !!result;
-}
-
-static void rotate_pattern(char *src_pattern, char *dst_pattern) {
-    // rotate the piece
-    dst_pattern[0] = (src_pattern[0] >> 1) | ((src_pattern[1] >> 1) << 1);
-    dst_pattern[1] = (src_pattern[0] & 0x01) | ((src_pattern[1] & 0x01) << 1);
-    // if the topmost row of the rotated piece is empty, shift the pattern upwards
-    if (dst_pattern[0] == 0) {
-        dst_pattern[0] = dst_pattern[1];
-        dst_pattern[1] = 0;
-    }
-    // if the rightmost column of the rotated piece is empty, shift the pattern to the right
-    if (((dst_pattern[0] & 0b01) == 0) && ((dst_pattern[1] & 0b01) == 0)) {
-        dst_pattern[0] >>= 1;
-        dst_pattern[1] >>= 1;
-    }
-}
-
 // GRAPHICS ------------------------------------------------------------------
 
-#define CHAR_EMPTY_PATTERN			0
-#define CHAR_EMPTY_PLAYGROUND		1
-#define CHAR_PATTERN_EMPTY			2
-#define CHAR_PATTERN_PATTERN		3
-#define CHAR_PATTERN_PLAYGROUND		4
+// used for visualization of movements
+#define CHAR_PATTERN_CANNON_1       0
+#define CHAR_PATTERN_CANNON_2  		1
+#define CHAR_PATTERN_ALIEN			2
+#define CHAR_PATTERN_ALIEN_MISSILE	3
+#define CHAR_PATTERN_MISSILE		4
 #define CHAR_PLAYGROUND_EMPTY		5
 #define CHAR_PLAYGROUND_PATTERN		6
 #define CHAR_PLAYGROUND_PLAYGROUND	7
@@ -340,9 +281,9 @@ static void rotate_pattern(char *src_pattern, char *dst_pattern) {
 
 #define CHARMAP_SIZE 8
 static unsigned char CHARMAP[CHARMAP_SIZE][8] = {
-    { 0b10101, 0b01010, 0b10101, 0b01010, 0, 0, 0, 0 },							// CHAR_EMPTY_PATTERN
-    { 0b11111, 0b11111, 0b11111, 0b11111, 0, 0, 0, 0 },							// CHAR_EMPTY_PLAYGROUND
-    { 0, 0, 0, 0, 0b10101, 0b01010, 0b10101, 0b01010 },							// CHAR_PATTERN_EMPTY
+    { 0b00011, 0b00011, 0b01111, 0b00011, 0b00011, 0, 0, 0 },					// CHAR_PATTERN_CANNON_1
+    { 0, 0, 0, 0, 0, 0, 0, 0 },                                                 // CHAR_PATTERN_CANNON_2
+    { 0b10100, 0b01110, 0b11011, 0b11101, 0b11101, 0b11011, 0b01110, 0b10100 },	// CHAR_PATTERN_ALIEN
     { 0b10101, 0b01010, 0b10101, 0b01010, 0b10101, 0b01010, 0b10101, 0b01010 },	// CHAR_PATTERN_PATTERN
     { 0b11111, 0b11111, 0b11111, 0b11111, 0b10101, 0b01010, 0b10101, 0b01010 },	// CHAR_PATTERN_PLAYGROUND
     { 0, 0, 0, 0, 0b11111, 0b11111, 0b11111, 0b11111 },							// CHAR_PLAYGROUND_EMPTY
@@ -350,25 +291,45 @@ static unsigned char CHARMAP[CHARMAP_SIZE][8] = {
     { 0b11111, 0b11111, 0b11111, 0b11111, 0b11111, 0b11111, 0b11111, 0b11111 }	// CHAR_PLAYGROUND_PLAYGROUND
 };
 
-static const unsigned char XLAT_PATTERN[] = { 0b0000, 0b0001, 0b0100, 0b0101 };
-static const unsigned char XLAT_PLAYGROUND[] = { 0b0000, 0b0010, 0b1000, 0b1010 };
-static const char XLAT_CHAR[] = {
-    CHAR_EMPTY_EMPTY,			// 0b0000
-    CHAR_EMPTY_PATTERN,			// 0b0001
-    CHAR_EMPTY_PLAYGROUND,		// 0b0010
-    CHAR_ERROR,					// 0b0011
-    CHAR_PATTERN_EMPTY,			// 0b0100
-    CHAR_PATTERN_PATTERN,		// 0b0101
-    CHAR_PATTERN_PLAYGROUND,	// 0b0110
-    CHAR_ERROR,					// 0b0111
-    CHAR_PLAYGROUND_EMPTY,		// 0b1000
-    CHAR_PLAYGROUND_PATTERN,	// 0b1001
-    CHAR_PLAYGROUND_PLAYGROUND,	// 0b1010
-    CHAR_ERROR,					// 0b1011
-    CHAR_ERROR,					// 0b1100
-    CHAR_ERROR,					// 0b1101
-    CHAR_ERROR,					// 0b1110
-    CHAR_ERROR					// 0b1111
+#define ALIEN_PLAYGROUND 15
+#define DEAD_ZONE 14
+
+static unsigned char ROW1[] = {
+    CHAR_PATTERN_ALIEN,
+    CHAR_PATTERN_ALIEN,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_PATTERN_CANNON_1
+};
+
+static unsigned char ROW2[] = {
+    CHAR_PATTERN_ALIEN,
+    CHAR_PATTERN_ALIEN,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_EMPTY_EMPTY,
+    CHAR_PATTERN_CANNON_2
 };
 
 static void chars_init() {
@@ -379,26 +340,87 @@ static void chars_init() {
     }
 }
 
+static void chars_cannon_rewrite() {
+    for (int c = 0;  c < 2; ++c) {
+        lcd_send_command(CG_RAM_ADDR + c*8);
+        for (int r = 0; r < 8; ++r)
+            lcd_send_data(CHARMAP[c][r]);
+    }
+}
+
 static void screen_update() {
     lcd_send_command(DD_RAM_ADDR);		//set to Line 1
 
-    for (int r1 = 0; r1 < PLAYFIELD_ROWS; ++r1) {
-        unsigned char row = XLAT_PLAYGROUND[(playfield[r1] >> 1) & 0b11];
-        for (int pr = 0; pr < PATTERN_SIZE; ++pr)
-            if (r1 == current_row + pr)
-                row |= XLAT_PATTERN[(current_pattern[pr] << current_col) & 0b11];
-        lcd_send_data(XLAT_CHAR[row]);
+    for (int r1 = 0; r1 < LCD_WIDTH; ++r1) {
+        lcd_send_data(ROW1[r1]);
     }
 
     lcd_send_command(DD_RAM_ADDR2);		//set to Line 2
 
-    for (int r2 = 0; r2 < PLAYFIELD_ROWS; ++r2) {
-        char row = XLAT_PLAYGROUND[(playfield[r2] >> 3) & 0b11];
-        for (int pr = 0; pr < PATTERN_SIZE; ++pr)
-            if (r2 == current_row + pr)
-                row |= XLAT_PATTERN[((current_pattern[pr] << current_col) >> 2) & 0b11];
-        lcd_send_data(XLAT_CHAR[row]);
+    for (int r2 = 0; r2 < LCD_WIDTH; ++r2) {
+        lcd_send_data(ROW2[r2]);
     }
+}
+
+static void move_aliens();
+
+static void new_invaders() {
+    if (ROW1[0] == CHAR_PATTERN_ALIEN || ROW2[0] == CHAR_PATTERN_ALIEN)
+        move_aliens();
+
+    ROW1[0] = CHAR_PATTERN_ALIEN;
+    ROW2[0] = CHAR_PATTERN_ALIEN;
+}
+
+static int is_in_dead_zone() {
+    if (ROW1[DEAD_ZONE] == CHAR_PATTERN_ALIEN ||
+            ROW2[DEAD_ZONE] == CHAR_PATTERN_ALIEN)
+        return 1;
+    return 0;
+}
+
+static void move_aliens() {
+    for (int i = ALIEN_PLAYGROUND - 1; i > 0; --i) {
+        ROW1[i] = ROW1[i - 1];
+        ROW2[i] = ROW2[i - 1];
+    }
+    ROW1[0] = CHAR_EMPTY_EMPTY;
+    ROW2[0] = CHAR_EMPTY_EMPTY;
+}
+
+static void move_left() {
+    move_aliens();
+    ROW2[0] = CHAR_ERROR;
+    int *elem = &CHARMAP[1][7];
+    for (int i = 16; i > 0; --i) {
+        // we are at the edge of the left side
+        if (*elem != 0)
+            break;
+        if (*(elem - 1) != 0) {
+            *elem = *(elem - 1);
+        }
+    }
+    chars_cannon_rewrite();
+}
+
+static void move_right() {
+    move_aliens();
+    ROW1[0] = CHAR_ERROR;
+}
+
+static void shoot() {
+    move_aliens();
+    ROW1[0] = CHAR_ERROR;
+    ROW2[0] = CHAR_ERROR;
+}
+
+static void reset_play_field() {
+    for (int i = 0; i < ALIEN_PLAYGROUND; ++i) {
+        ROW1[i] = CHAR_EMPTY_EMPTY;
+        ROW2[i] = CHAR_EMPTY_EMPTY;
+    }
+    new_invaders();
+    new_invaders();
 }
 
 // MAIN ENTRY POINT ----------------------------------------------------------
@@ -419,85 +441,37 @@ int main(void)
     lcd_send_line2("  by David Havas");
 
     while (1) {
-        int new_pattern;
 
         while (button_pressed() != BUTTON_CENTER)
             button_unlock();
 
-        playfield_clear(); // set up new playfield
+        reset_play_field(); // set up new playfield
         delay_cycle = 0; // start the timer
-        new_pattern = 1; // start with new pattern
 #ifndef NO_AVR
-        play_tune(TUNE_START); // play a start signal
+        //play_tune(TUNE_START); // play a start signal
 #endif
 
         // loop of the game
         while (1) {
-            // start one new piece at the top
-            if (new_pattern) {
-                new_pattern = 0;
-
-                // select a new random pattern
-                int p = rnd_gen(PATTERN_NUM);
-                for (int i = 0; i < PATTERN_SIZE; ++i)
-                    current_pattern[i] = PATTERNS[p][i];
-
-                // rotate it randomly
-                int r = rnd_gen(4);
-                for (int j = 0; j < r; ++j) {
-                    char tmp_pattern[PATTERN_SIZE];
-                    rotate_pattern(current_pattern, tmp_pattern);
-                    for (int k = 0; k < PATTERN_SIZE; ++k)
-                        current_pattern[k] = tmp_pattern[k];
-                }
-
-                // place it randomly at the top of the playfield
-                current_row = 0;
-                current_col = rnd_gen(PLAYFIELD_COLS - PATTERN_SIZE + 1);
-
-                // show the new piece on the screen
-                screen_update();
-            }
-
-            // game over, if the new piece does not fit in the top row
-            if ((current_row == 0) && collision(current_pattern, current_row, current_col))
-                break;
-
             // if enough time passed, try to drop the current piece by one row
             if (++delay_cycle > LEVELS[level_current].delay) {
                 delay_cycle = 0;
-                // will not succeed at the last line, or if playfield below has conflicting elements
-                if (collision(current_pattern, current_row + 1, current_col)) {
-                    // merge the current piece to the playfield then, and start with a new piece
-                    merge_current_pattern_to_playfield();
-                    new_pattern = 1;
-                    continue;
-                }
-                // otherwise, drop the piece by one row
-                ++current_row;
+                // move aliens down one row
+                move_aliens();
             }
+
+            if (is_in_dead_zone())
+                break;
 
             // if trying to move left or right, do so only if the piece does not leave or collide with the playfield
             int button = button_pressed();
-            int horizontal = 0;
             if (button == BUTTON_LEFT)
-                horizontal = +1;
+                move_left();
             if (button == BUTTON_RIGHT)
-                horizontal = -1;
-            if ((horizontal != 0) && !collision(current_pattern, current_row, current_col + horizontal))
-                current_col += horizontal;
+                move_right();
+            if (button == BUTTON_CENTER)
+                shoot();
 
-            // if trying to rotate right, do only so if the piece does not collide with the playfield
-            if (button == BUTTON_UP) {
-                char tmp_pattern[PATTERN_SIZE];
-                // rotate the current piece into a temp
-                rotate_pattern(current_pattern, tmp_pattern);
-                // check for collision, and make the rotation permanent if there is none
-
-                if (!collision(tmp_pattern, current_row, current_col))
-                    for (int i = 0; i < PATTERN_SIZE; ++i)
-                        current_pattern[i] = tmp_pattern[i];
-            }
 
             // once all movements are done, update the screen
             screen_update();
@@ -508,7 +482,7 @@ int main(void)
 
         // playing some funeral tunes and displaying a game over screen
 #ifndef NO_AVR
-        play_tune(TUNE_GAMEOVER);
+        //play_tune(TUNE_GAMEOVER);
 #endif
         lcd_send_line1("    GAME OVER   ");
         lcd_send_line2("Click to restart");
