@@ -79,10 +79,10 @@ typedef struct {
     int length;
 } tune_t;
 
-static tune_t TUNE_START[] = { { 2000, 40 }, { 0, 0 } };
-static tune_t TUNE_LEVELUP[] = { { 3000, 20 }, { 0, 0 } };
-static tune_t TUNE_SHOOT[] = { { 5000, 10 }, { 0, 0 } };
-static tune_t TUNE_GAMEOVER[] = { { 1000, 200 }, { 1500, 200 }, { 2000, 400 }, { 0, 0 } };
+static tune_t TUNE_START[] = { { 1500, 100 }, { 1000, 100 }, { 500, 100 }, { 0, 0 } };
+static tune_t TUNE_LEVELUP[] = { { 3000, 20 }, { 2500, 10 }, { 0, 0 } };
+static tune_t TUNE_SHOOT[] = { { 500, 20 }, { 1000, 20 }, { 2000, 20 }, { 0, 0 } };
+static tune_t TUNE_GAMEOVER[] = { { 1000, 200 }, { 2000, 150 }, { 4000, 200 }, { 0, 0 } };
 
 static void play_note(int freq, int len) {
     for (int l = 0; l < len; ++l) {
@@ -244,14 +244,16 @@ static void lcd_send_line2(char *str) {
 typedef struct {
     int	delay;
     int kills;
+    int shoot;
 } level_t;
 
 #define LEVEL_NUM 6
 static level_t LEVELS[] = { { 30, 5 }, { 25, 10 }, { 20, 15 }, { 15, 20 }, { 10, 30 }, { 0, 0 } };
 static int level_current = 0;
 static int delay_cycle;
+static int shoot_cycle;
 
-static void kill_allien() {
+static void kill_alien() {
     // do nothing if already at top speed
     if (level_current == LEVEL_NUM-1)
         return;
@@ -268,31 +270,33 @@ static void kill_allien() {
 // GRAPHICS ------------------------------------------------------------------
 
 // used for visualization of movements
-#define CHAR_PATTERN_CANNON_1       0
-#define CHAR_PATTERN_CANNON_2  		1
-#define CHAR_PATTERN_ALIEN			2
-#define CHAR_PATTERN_ALIEN_MISSILE	3
-#define CHAR_PATTERN_MISSILE		4
-#define CHAR_PLAYGROUND_EMPTY		5
-#define CHAR_PLAYGROUND_PATTERN		6
-#define CHAR_PLAYGROUND_PLAYGROUND	7
-#define CHAR_EMPTY_EMPTY			' '
-#define CHAR_ERROR					'X'
+#define CHAR_PATTERN_CANNON_1           0
+#define CHAR_PATTERN_CANNON_2  		    1
+#define CHAR_PATTERN_ALIEN		        2
+#define CHAR_PATTERN_ALIEN_MISSILE	    3
+#define CHAR_PATTERN_ALIEN_MISSILE_2	4
+#define CHAR_PATTERN_PLAYER_MISSILE	    5
+#define CHAR_PATTERN_PLAYER_MISSILE_2	6
+#define CHAR_PATTERN_EMPTY      	    7
+#define CHAR_EMPTY_EMPTY		        ' '
+#define CHAR_ERROR			            'X'
 
 #define CHARMAP_SIZE 8
+static unsigned char CANNON_POS = 2;
 static unsigned char CHARMAP[CHARMAP_SIZE][8] = {
-    { 0b00011, 0b00011, 0b01111, 0b00011, 0b00011, 0, 0, 0 },					// CHAR_PATTERN_CANNON_1
+    { 0b00011, 0b00011, 0b01111, 0b00011, 0b00011, 0, 0, 0 },			// CHAR_PATTERN_CANNON_1
     { 0, 0, 0, 0, 0, 0, 0, 0 },                                                 // CHAR_PATTERN_CANNON_2
     { 0b10100, 0b01110, 0b11011, 0b11101, 0b11101, 0b11011, 0b01110, 0b10100 },	// CHAR_PATTERN_ALIEN
-    { 0b10101, 0b01010, 0b10101, 0b01010, 0b10101, 0b01010, 0b10101, 0b01010 },	// CHAR_PATTERN_PATTERN
-    { 0b11111, 0b11111, 0b11111, 0b11111, 0b10101, 0b01010, 0b10101, 0b01010 },	// CHAR_PATTERN_PLAYGROUND
-    { 0, 0, 0, 0, 0b11111, 0b11111, 0b11111, 0b11111 },							// CHAR_PLAYGROUND_EMPTY
-    { 0b10101, 0b01010, 0b10101, 0b01010, 0b11111, 0b11111, 0b11111, 0b11111 },	// CHAR_PLAYGROUND_PATTERN
-    { 0b11111, 0b11111, 0b11111, 0b11111, 0b11111, 0b11111, 0b11111, 0b11111 }	// CHAR_PLAYGROUND_PLAYGROUND
+    { 0, 0, 0, 0b11100, 0b11100, 0, 0, 0 },	// CHAR_PATTERN_ALIEN_MISSILE
+    { 0, 0, 0, 0b11100, 0b11100, 0, 0, 0 },	// CHAR_PATTERN_ALIEN_MISSILE_2
+    { 0, 0, 0, 0, 0, 0, 0, 0 }, // CHAR_PATTERN_PLAYER_MISSILE
+    { 0, 0, 0, 0, 0, 0, 0, 0 },	// CHAR_PATTERN_PLAYER_MISSILE_2
+    { 0, 0, 0, 0, 0, 0, 0, 0 }	//
 };
 
 #define ALIEN_PLAYGROUND 15
 #define DEAD_ZONE 14
+#define CANNON 15
 
 static unsigned char ROW1[] = {
     CHAR_PATTERN_ALIEN,
@@ -348,6 +352,14 @@ static void chars_cannon_rewrite() {
     }
 }
 
+static void chars_missile_rewrite() {
+    for (int c = 3;  c <= 6; ++c) {
+        lcd_send_command(CG_RAM_ADDR + c*8);
+        for (int r = 0; r < 8; ++r)
+            lcd_send_data(CHARMAP[c][r]);
+    }
+}
+
 static void screen_update() {
     lcd_send_command(DD_RAM_ADDR);		//set to Line 1
 
@@ -373,10 +385,12 @@ static void new_invaders() {
 }
 
 static int is_in_dead_zone() {
-    if (ROW1[DEAD_ZONE] == CHAR_PATTERN_ALIEN ||
-            ROW2[DEAD_ZONE] == CHAR_PATTERN_ALIEN)
-        return 1;
-    return 0;
+    char collision = 0;
+    if ((ROW1[DEAD_ZONE] == CHAR_PATTERN_ALIEN && ROW1[CANNON] != 0) ||
+            (ROW2[DEAD_ZONE] == CHAR_PATTERN_ALIEN && ROW2[CANNON] != 0))
+        collision = 1;
+
+    return collision;
 }
 
 static void move_aliens() {
@@ -389,31 +403,39 @@ static void move_aliens() {
 }
 
 static void move_left() {
-    move_aliens();
-    ROW2[0] = CHAR_ERROR;
-    //*(CHARMAP+row)+column)
-    int *elem = (int *)CHARMAP + 2 * 8;
-    for (int i = 16; i > 0; --i) {
-        // we are at the edge of the left side
-        if (*elem != 0)
-            break;
-        if (*(elem - 1) != 0) {
-            *elem = *(elem - 1);
-        }
+    unsigned char *elem = (unsigned char*)CHARMAP + 15;
+    // we are at the edge of the left side
+    if (*elem != 0)
+    	return;
+    CANNON_POS++;
+    for (int i = 15; i > 0; --i) {
+        *elem = *(elem - 1);
         --elem;
     }
+    *elem = 0;
     chars_cannon_rewrite();
 }
 
 static void move_right() {
-    move_aliens();
-    ROW1[0] = CHAR_ERROR;
+    unsigned char *elem = (unsigned char*)CHARMAP;
+    // we are at the edge of the left side
+    if (*elem != 0)
+	    return;
+	--CANNON_POS;
+    for (int i = 0; i < 15; ++i) {
+        *elem = *(elem + 1);
+        ++elem;
+    }
+    *elem = 0;
+    chars_cannon_rewrite();
 }
 
 static void shoot() {
-    move_aliens();
-    ROW1[0] = CHAR_ERROR;
-    ROW2[0] = CHAR_ERROR;
+    //play_tune(TUNE_SHOOT); // shoot signal
+}
+
+static void shoot_alien() {
+    //play_tune(TUNE_SHOOT); // shoot signal
 }
 
 static void reset_play_field() {
@@ -450,7 +472,7 @@ int main(void)
         reset_play_field(); // set up new playfield
         delay_cycle = 0; // start the timer
 #ifndef NO_AVR
-        //play_tune(TUNE_START); // play a start signal
+        play_tune(TUNE_START); // play a start signal
 #endif
 
         // loop of the game
@@ -458,12 +480,14 @@ int main(void)
             // if enough time passed, try to drop the current piece by one row
             if (++delay_cycle > LEVELS[level_current].delay) {
                 delay_cycle = 0;
+                
+                // in case aliens are in dead zone and cannon is in the same column
+                // than we are dead
+                if (is_in_dead_zone())
+                    break;                
                 // move aliens down one row
                 move_aliens();
             }
-
-            if (is_in_dead_zone())
-                break;
 
             // if trying to move left or right, do so only if the piece does not leave or collide with the playfield
             int button = button_pressed();
