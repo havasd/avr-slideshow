@@ -9,17 +9,18 @@
 #include "lcdsim.h"
 #include <time.h>
 #else
+#define	__AVR_ATmega128__	1
 #include "avr/io.h"
 #include "lcd.h"
 #endif // NO_AVR
 
 #include <stdint.h>
+#include <string.h>
 #include <stdlib.h>
 #include "charmap.h"
 #include "utils.h"
 
 #ifndef NO_AVR
-#define __AVR_ATMEGA128__ 1
 
 #define CG_RAM_ADDR       0x40
 
@@ -244,13 +245,18 @@ static void lcd_send_line2(char *str) {
 typedef struct {
     int	delay;
     int kills;
-    int shoot;
+    int new_wave;
 } level_t;
 
 #define LEVEL_NUM 6
-static level_t LEVELS[] = { { 30, 5 }, { 25, 10 }, { 20, 15 }, { 15, 20 }, { 10, 30 }, { 0, 0 } };
+static level_t LEVELCAPS[] = { { 25, 5, 50 }, { 25, 10, 40 }, { 20, 15, 25 }, { 15, 20, 20 }, { 10, 30, 15 }, { 0, 0, 0 } };
+static level_t LEVELS[] = { { 25, 5, 50 }, { 25, 10, 40 }, { 20, 15, 25 }, { 15, 20, 20 }, { 10, 30, 15 }, { 0, 0, 0 } };
 static int level_current = 0;
 static int delay_cycle;
+static int wave_cycle;
+
+
+#define SHOOT_UPDATE_TIMER 10
 static int shoot_cycle;
 
 static void kill_alien() {
@@ -284,7 +290,7 @@ static void kill_alien() {
 #define CHARMAP_SIZE 8
 static unsigned char CANNON_POS = 2;
 static unsigned char CHARMAP[CHARMAP_SIZE][8] = {
-    { 0b00011, 0b00011, 0b01111, 0b00011, 0b00011, 0, 0, 0 },			// CHAR_PATTERN_CANNON_1
+    { 0b00011, 0b00111, 0b01111, 0b00111, 0b00011, 0, 0, 0 },			// CHAR_PATTERN_CANNON_1
     { 0, 0, 0, 0, 0, 0, 0, 0 },                                                 // CHAR_PATTERN_CANNON_2
     { 0b10100, 0b01110, 0b11011, 0b11101, 0b11101, 0b11011, 0b01110, 0b10100 },	// CHAR_PATTERN_ALIEN
     { 0, 0, 0, 0b11100, 0b11100, 0, 0, 0 },	// CHAR_PATTERN_ALIEN_MISSILE
@@ -352,12 +358,10 @@ static void chars_cannon_rewrite() {
     }
 }
 
-static void chars_missile_rewrite() {
-    for (int c = 3;  c <= 6; ++c) {
-        lcd_send_command(CG_RAM_ADDR + c*8);
-        for (int r = 0; r < 8; ++r)
-            lcd_send_data(CHARMAP[c][r]);
-    }
+static void chars_missile_rewrite(unsigned char patternId) {
+    lcd_send_command(CG_RAM_ADDR +  patternId*8);
+    for (int r = 0; r < 8; ++r)
+        lcd_send_data(CHARMAP[patternId][r]);
 }
 
 static void screen_update() {
@@ -395,8 +399,10 @@ static int is_in_dead_zone() {
 
 static void move_aliens() {
     for (int i = ALIEN_PLAYGROUND - 1; i > 0; --i) {
-        ROW1[i] = ROW1[i - 1];
-        ROW2[i] = ROW2[i - 1];
+        if (ROW1[i - 1] == CHAR_PATTERN_ALIEN)
+            ROW1[i] = ROW1[i - 1];
+        if (ROW2[i - 1] == CHAR_PATTERN_ALIEN)
+            ROW2[i] = ROW2[i - 1];
     }
     ROW1[0] = CHAR_EMPTY_EMPTY;
     ROW2[0] = CHAR_EMPTY_EMPTY;
@@ -430,14 +436,86 @@ static void move_right() {
     chars_cannon_rewrite();
 }
 
+static void move_missile() {
+}
+
+static void add_missile(char row, char patternId) {
+    // meg kell nezni, hogy van-e alien ezen a ponton
+    if (row == 0) {
+        ROW1[14] = patternId;
+    } else if (row == 1) {
+        ROW2[14] = patternId;
+    }
+}
+
+// number of missiles
+#define MISSILES_MAX 3
+static unsigned char MISSILES_MASK = 0;
+
+// agyu lovese
+// 2 golyo lehet egyszerre palyan
+// az elso szabad agyuba teszi
+
 static void shoot() {
-    //play_tune(TUNE_SHOOT); // shoot signal
+    if (MISSILES_MASK == MISSILES_MAX)
+        return;
+        
+    unsigned char pattern = 0b11111;
+    unsigned char pos = CANNON_POS;
+    char row = 0;
+    if (pos >= 8) {
+        row = 1;
+        pos -= 8;
+    }
+    
+    unsigned char patternId = CHAR_PATTERN_PLAYER_MISSILE;
+    if (MISSILES_MASK == 1) {
+        patternId = CHAR_PATTERN_PLAYER_MISSILE_2;
+        MISSILES_MASK |= 2;
+    } else
+        MISSILES_MASK |= 1;
+     
+    
+    CHARMAP[patternId][pos] = pattern;
+    add_missile(row, patternId);
+    play_tune(TUNE_SHOOT); // shoot signal
+    chars_missile_rewrite(patternId);
 }
 
 static void shoot_alien() {
-    //play_tune(TUNE_SHOOT); // shoot signal
+    if (rnd_gen(100) > 100)
+        return;
+
+    char col1 = 0;
+    char col2 = 0;
+    for (char i = 0; i <= ALIEN_PLAYGROUND; ++i) {
+        if (ROW1[i] == CHAR_PATTERN_ALIEN) {
+            col1++;
+        }
+        if (ROW2[i] == CHAR_PATTERN_ALIEN) {
+            col2++;
+        }
+    }
+    
+    char rnd = 0;
+    char column = rnd_gen(2);
+    if (column == 0) {
+        rnd = rnd_gen(col1);
+    } else {
+        rnd = rnd_gen(col2);
+        col2 = 0;
+        for (char i = 0; i <= ALIEN_PLAYGROUND; ++i) {
+            if (ROW2[i] == CHAR_PATTERN_ALIEN) {
+                ++col2;
+                //if (col2 =
+            }
+        }
+    }
+    
+    play_tune(TUNE_SHOOT); // shoot signal
 }
 
+//static void update_
 static void reset_play_field() {
     for (int i = 0; i < ALIEN_PLAYGROUND; ++i) {
         ROW1[i] = CHAR_EMPTY_EMPTY;
@@ -445,6 +523,7 @@ static void reset_play_field() {
     }
     new_invaders();
     new_invaders();
+    memcpy(LEVELS, LEVELCAPS, sizeof LEVELCAPS);
 }
 
 // MAIN ENTRY POINT ----------------------------------------------------------
@@ -471,6 +550,8 @@ int main(void)
 
         reset_play_field(); // set up new playfield
         delay_cycle = 0; // start the timer
+        wave_cycle = 0;
+        shoot_cycle = 0; // update interval of the missiles
 #ifndef NO_AVR
         play_tune(TUNE_START); // play a start signal
 #endif
@@ -488,6 +569,12 @@ int main(void)
                 // move aliens down one row
                 move_aliens();
             }
+            
+            if (++wave_cycle > LEVELS[level_current].new_wave) {
+                wave_cycle = 0;
+                new_invaders();
+            }
+
 
             // if trying to move left or right, do so only if the piece does not leave or collide with the playfield
             int button = button_pressed();
