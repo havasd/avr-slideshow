@@ -51,11 +51,11 @@ static int rnd_gen(int max) {
 #else
 
 static void rnd_init() {
-    srand(time(NULL));
+  srand(time(NULL));
 }
 
 static int rnd_gen(int max) {
-    return rand() % max;
+  return rand() % max;
 }
 
 #endif
@@ -76,8 +76,8 @@ static void port_init() {
 // SOUND GENERATOR -----------------------------------------------------------
 
 typedef struct {
-    int freq;
-    int length;
+  int freq;
+  int length;
 } tune_t;
 
 static tune_t TUNE_START[] = { { 1500, 100 }, { 1000, 100 }, { 500, 100 }, { 0, 0 } };
@@ -86,20 +86,20 @@ static tune_t TUNE_SHOOT[] = { { 500, 20 }, { 1000, 20 }, { 2000, 20 }, { 0, 0 }
 static tune_t TUNE_GAMEOVER[] = { { 1000, 200 }, { 2000, 150 }, { 4000, 200 }, { 0, 0 } };
 
 static void play_note(int freq, int len) {
-    for (int l = 0; l < len; ++l) {
-        int i;
-        PORTE = (PORTE & 0b11011111) | 0b00010000;	//set bit4 = 1; set bit5 = 0
-        for (i=freq; i; i--);
-        PORTE = (PORTE | 0b00100000) & 0b11101111;	//set bit4 = 0; set bit5 = 1
-        for (i=freq; i; i--);
-    }
+  for (int l = 0; l < len; ++l) {
+    int i;
+    PORTE = (PORTE & 0b11011111) | 0b00010000;	//set bit4 = 1; set bit5 = 0
+    for (i=freq; i; i--);
+    PORTE = (PORTE | 0b00100000) & 0b11101111;	//set bit4 = 0; set bit5 = 1
+    for (i=freq; i; i--);
+  }
 }
 
 static void play_tune(tune_t *tune) {
-    while (tune->freq != 0) {
-        play_note(tune->freq, tune->length);
-        ++tune;
-    }
+  while (tune->freq != 0) {
+    play_note(tune->freq, tune->length);
+    ++tune;
+  }
 }
 
 // BUTTON HANDLING -----------------------------------------------------------
@@ -243,9 +243,9 @@ static void lcd_send_line2(char *str) {
 // SPEED LEVELS --------------------------------------------------------------
 
 typedef struct {
-    int	delay;
-    int kills;
-    int new_wave;
+  int	delay;
+  int kills;
+  int new_wave;
 } level_t;
 
 #define LEVEL_NUM 6
@@ -260,44 +260,44 @@ static int wave_cycle;
 static int shoot_cycle;
 
 static void kill_alien() {
-    // do nothing if already at top speed
-    if (level_current == LEVEL_NUM-1)
-        return;
+  // do nothing if already at top speed
+  if (level_current == LEVEL_NUM-1)
+    return;
 
-    // if enough rows removed, increase speed
-    if (--LEVELS[level_current].kills == 0) {
-        ++level_current;
+  // if enough rows removed, increase speed
+  if (--LEVELS[level_current].kills == 0) {
+    ++level_current;
 #ifndef NO_AVR
-        play_tune(TUNE_LEVELUP);
+    play_tune(TUNE_LEVELUP);
 #endif
-    }
+  }
 }
 
 // GRAPHICS ------------------------------------------------------------------
 
 // used for visualization of movements
-#define CHAR_PATTERN_CANNON_1           0
+#define CHAR_PATTERN_CANNON_1         0
 #define CHAR_PATTERN_CANNON_2  		    1
 #define CHAR_PATTERN_ALIEN		        2
-#define CHAR_PATTERN_ALIEN_MISSILE	    3
-#define CHAR_PATTERN_ALIEN_MISSILE_2	4
-#define CHAR_PATTERN_PLAYER_MISSILE	    5
-#define CHAR_PATTERN_PLAYER_MISSILE_2	6
-#define CHAR_PATTERN_EMPTY      	    7
+#define CHAR_PATTERN_ALIEN_MISSILE	  3
+#define CHAR_PATTERN_PLAYER_MISSILE   4
+#define CHAR_PATTERN_PLAYER_MISSILE_2 5
+#define CHAR_PATTERN_MERGED_MISSILE   6
+#define CHAR_PATTERN_MERGED_MISSILE_2 7
 #define CHAR_EMPTY_EMPTY		        ' '
 #define CHAR_ERROR			            'X'
 
 #define CHARMAP_SIZE 8
 static unsigned char CANNON_POS = 2;
 static unsigned char CHARMAP[CHARMAP_SIZE][8] = {
-    { 0b00011, 0b00111, 0b01111, 0b00111, 0b00011, 0, 0, 0 },			// CHAR_PATTERN_CANNON_1
-    { 0, 0, 0, 0, 0, 0, 0, 0 },                                                 // CHAR_PATTERN_CANNON_2
-    { 0b10100, 0b01110, 0b11011, 0b11101, 0b11101, 0b11011, 0b01110, 0b10100 },	// CHAR_PATTERN_ALIEN
-    { 0, 0, 0, 0b11100, 0b11100, 0, 0, 0 },	// CHAR_PATTERN_ALIEN_MISSILE
-    { 0, 0, 0, 0b11100, 0b11100, 0, 0, 0 },	// CHAR_PATTERN_ALIEN_MISSILE_2
-    { 0, 0, 0, 0, 0, 0, 0, 0 }, // CHAR_PATTERN_PLAYER_MISSILE
-    { 0, 0, 0, 0, 0, 0, 0, 0 },	// CHAR_PATTERN_PLAYER_MISSILE_2
-    { 0, 0, 0, 0, 0, 0, 0, 0 }	//
+  { 0b00011, 0b00111, 0b01111, 0b00111, 0b00011, 0, 0, 0 },			// CHAR_PATTERN_CANNON_1
+  { 0, 0, 0, 0, 0, 0, 0, 0 },                                                 // CHAR_PATTERN_CANNON_2
+  { 0b10100, 0b01110, 0b11011, 0b11101, 0b11101, 0b11011, 0b01110, 0b10100 },	// CHAR_PATTERN_ALIEN
+  { 0, 0, 0, 0b11100, 0b11100, 0, 0, 0 },	// CHAR_PATTERN_ALIEN_MISSILE
+  { 0, 0, 0, 0, 0, 0, 0, 0 },	// CHAR_PATTERN_PLAYER_MISSILE
+  { 0, 0, 0, 0, 0, 0, 0, 0 }, // CHAR_PATTERN_PLAYER_MISSILE_2
+  { 0, 0, 0, 0, 0, 0, 0, 0 },	// CHAR_PATTERN_MERGED_MISSILE
+  { 0, 0, 0, 0, 0, 0, 0, 0 }	// CHAR_PATTERN_MERGED_MISSILE_2
 };
 
 #define ALIEN_PLAYGROUND 15
@@ -305,156 +305,278 @@ static unsigned char CHARMAP[CHARMAP_SIZE][8] = {
 #define CANNON 15
 
 static unsigned char ROW1[] = {
-    CHAR_PATTERN_ALIEN,
-    CHAR_PATTERN_ALIEN,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_PATTERN_CANNON_1
+  CHAR_PATTERN_ALIEN,
+  CHAR_PATTERN_ALIEN,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_PATTERN_CANNON_1
 };
 
 static unsigned char ROW2[] = {
-    CHAR_PATTERN_ALIEN,
-    CHAR_PATTERN_ALIEN,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_EMPTY_EMPTY,
-    CHAR_PATTERN_CANNON_2
+  CHAR_PATTERN_ALIEN,
+  CHAR_PATTERN_ALIEN,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_EMPTY_EMPTY,
+  CHAR_PATTERN_CANNON_2
 };
 
 static void chars_init() {
-    for (int c = 0; c < CHARMAP_SIZE; ++c) {
-        lcd_send_command(CG_RAM_ADDR + c*8);
-        for (int r = 0; r < 8; ++r)
-            lcd_send_data(CHARMAP[c][r]);
-    }
+  for (int c = 0; c < CHARMAP_SIZE; ++c) {
+    lcd_send_command(CG_RAM_ADDR + c*8);
+    for (int r = 0; r < 8; ++r)
+      lcd_send_data(CHARMAP[c][r]);
+  }
 }
 
 static void chars_cannon_rewrite() {
-    for (int c = 0;  c < 2; ++c) {
-        lcd_send_command(CG_RAM_ADDR + c*8);
-        for (int r = 0; r < 8; ++r)
-            lcd_send_data(CHARMAP[c][r]);
-    }
+  for (int c = 0;  c < 2; ++c) {
+    lcd_send_command(CG_RAM_ADDR + c*8);
+    for (int r = 0; r < 8; ++r)
+      lcd_send_data(CHARMAP[c][r]);
+  }
 }
 
 static void chars_missile_rewrite(unsigned char patternId) {
-    lcd_send_command(CG_RAM_ADDR +  patternId*8);
-    for (int r = 0; r < 8; ++r)
-        lcd_send_data(CHARMAP[patternId][r]);
+  lcd_send_command(CG_RAM_ADDR +  patternId*8);
+  for (int r = 0; r < 8; ++r)
+      lcd_send_data(CHARMAP[patternId][r]);
 }
 
 static void screen_update() {
-    lcd_send_command(DD_RAM_ADDR);		//set to Line 1
+  lcd_send_command(DD_RAM_ADDR);		//set to Line 1
 
-    for (int r1 = 0; r1 < LCD_WIDTH; ++r1) {
-        lcd_send_data(ROW1[r1]);
-    }
+  for (int r1 = 0; r1 < LCD_WIDTH; ++r1) {
+    lcd_send_data(ROW1[r1]);
+  }
 
-    lcd_send_command(DD_RAM_ADDR2);		//set to Line 2
+  lcd_send_command(DD_RAM_ADDR2);		//set to Line 2
 
-    for (int r2 = 0; r2 < LCD_WIDTH; ++r2) {
-        lcd_send_data(ROW2[r2]);
-    }
+  for (int r2 = 0; r2 < LCD_WIDTH; ++r2) {
+    lcd_send_data(ROW2[r2]);
+  }
 }
 
 static void move_aliens();
 
 static void new_invaders() {
-    if (ROW1[0] == CHAR_PATTERN_ALIEN || ROW2[0] == CHAR_PATTERN_ALIEN)
-        move_aliens();
+  if (ROW1[0] == CHAR_PATTERN_ALIEN || ROW2[0] == CHAR_PATTERN_ALIEN)
+    move_aliens();
 
-    ROW1[0] = CHAR_PATTERN_ALIEN;
-    ROW2[0] = CHAR_PATTERN_ALIEN;
+  ROW1[0] = CHAR_PATTERN_ALIEN;
+  ROW2[0] = CHAR_PATTERN_ALIEN;
 }
 
-static int is_in_dead_zone() {
-    char collision = 0;
-    if ((ROW1[DEAD_ZONE] == CHAR_PATTERN_ALIEN && ROW1[CANNON] != 0) ||
-            (ROW2[DEAD_ZONE] == CHAR_PATTERN_ALIEN && ROW2[CANNON] != 0))
-        collision = 1;
+static char is_cannon_in_pattern(unsigned char pattern) {
+  for (unsigned char i = 0; i < 8; ++i) {
+    if (CHARMAP[pattern][i] != 0)
+      return 1;
+  }
+  return 0;
+}
+static char is_in_dead_zone() {
+  char collision = 0;
+  if ((ROW1[DEAD_ZONE] == CHAR_PATTERN_ALIEN && is_cannon_in_pattern(ROW1[CANNON]) ||
+      (ROW2[DEAD_ZONE] == CHAR_PATTERN_ALIEN && is_cannon_in_pattern(ROW2[CANNON])))
+    collision = 1;
 
-    return collision;
+  return collision;
 }
 
 static void move_aliens() {
-    for (int i = ALIEN_PLAYGROUND - 1; i > 0; --i) {
-        if (ROW1[i - 1] == CHAR_PATTERN_ALIEN)
-            ROW1[i] = ROW1[i - 1];
-        if (ROW2[i - 1] == CHAR_PATTERN_ALIEN)
-            ROW2[i] = ROW2[i - 1];
-    }
-    ROW1[0] = CHAR_EMPTY_EMPTY;
-    ROW2[0] = CHAR_EMPTY_EMPTY;
+  for (int i = ALIEN_PLAYGROUND - 1; i > 0; --i) {
+    if (ROW1[i - 1] == CHAR_PATTERN_ALIEN)
+      ROW1[i] = ROW1[i - 1];
+    if (ROW2[i - 1] == CHAR_PATTERN_ALIEN)
+      ROW2[i] = ROW2[i - 1];
+  }
+  ROW1[0] = CHAR_EMPTY_EMPTY;
+  ROW2[0] = CHAR_EMPTY_EMPTY;
 }
 
 static void move_left() {
-    unsigned char *elem = (unsigned char*)CHARMAP + 15;
-    // we are at the edge of the left side
-    if (*elem != 0)
-    	return;
-    CANNON_POS++;
-    for (int i = 15; i > 0; --i) {
-        *elem = *(elem - 1);
-        --elem;
-    }
-    *elem = 0;
-    chars_cannon_rewrite();
+  unsigned char *elem = (unsigned char*)CHARMAP + 15;
+  // we are at the edge of the left side
+  if (*elem != 0)
+  	return;
+  CANNON_POS++;
+  for (int i = 15; i > 0; --i) {
+    *elem = *(elem - 1);
+    --elem;
+  }
+  *elem = 0;
+  chars_cannon_rewrite();
 }
 
 static void move_right() {
-    unsigned char *elem = (unsigned char*)CHARMAP;
-    // we are at the edge of the left side
-    if (*elem != 0)
-	    return;
-	--CANNON_POS;
-    for (int i = 0; i < 15; ++i) {
-        *elem = *(elem + 1);
-        ++elem;
-    }
-    *elem = 0;
-    chars_cannon_rewrite();
-}
-
-static void move_missile() {
-}
-
-static void add_missile(char row, char patternId) {
-    // meg kell nezni, hogy van-e alien ezen a ponton
-    if (row == 0) {
-        ROW1[14] = patternId;
-    } else if (row == 1) {
-        ROW2[14] = patternId;
-    }
+  unsigned char *elem = (unsigned char*)CHARMAP;
+  // we are at the edge of the left side
+  if (*elem != 0)
+    return;
+  --CANNON_POS;
+  for (int i = 0; i < 15; ++i) {
+    *elem = *(elem + 1);
+    ++elem;
+  }
+  *elem = 0;
+  chars_cannon_rewrite();
 }
 
 // number of missiles
-#define MISSILES_MAX 3
-static unsigned char MISSILES_MASK = 0;
+enum MissileMask{
+  MISSILE_NONE,
+  MISSILE_ONE,
+  MISSILE_TWO,
+  MISSILE_MAX
+};
+
+static MissileMask MISSILES_MASK = MISSILE_NONE;
+
+enum Merges {
+  MERGE_NONE,
+  MERGE_ONE,
+  MERGE_TWO,
+  MERGE_MAX
+}
+
+static Merges MERGE_MASK = MERGE_NONE;
+// itt taroljuk, hogy milyen pattern van mergelve
+static unsigned char p_missile = 0;
+static unsigned char p_missile2 = 0;
+
+static void merge_missiles(unsigned char player_missile) {
+  unsigned char merge_pattern = CHAR_PATTERN_MERGED_MISSILE;
+  if (merge = MERGE_ONE) {
+    merge_pattern = CHAR_PATTERN_MERGED_MISSILE_2;
+    MERGE_MASK |= MERGE_TWO;
+    p_missile2 = player_missile;
+  } else {
+    MERGE_MASK |= MERGE_ONE;
+    p_missile = player_missile;
+  }
+
+  for (char i = 0; i < 8; ++i) {
+    CHARMAP[merge_pattern][i] = CHARMAP[player_missile][i] | CHARMAP[CHAR_PATTERN_ALIEN_MISSILE][i];
+  }
+}
+
+static void move_missiles() {
+  for (unsigned char i = 0; i < ALIEN_PLAYGROUND; ++i) {
+    for (unsigned char j = 0; j < 2; ++j) {
+      unsigned char* ROW = NULL;
+      if (j == 0)
+        ROW = &ROW1[0];
+      else
+        ROW = &ROW2[0];
+
+      switch (ROW[i]) {
+        // alien missile esetén lefele
+        case CHAR_PATTERN_ALIEN_MISSILE: {
+          // eleri a jatekos vagy kimegy a palyarol
+          if (i == ALIEN_PLAYGROUND - 1)
+            ROW[i] = CHAR_EMPTY_EMPTY;
+          // ilyenkor mergelni kellene
+          else if (ROW[i + 1] == CHAR_PATTERN_PLAYER_MISSILE || ROW[i + 1] == CHAR_PATTERN_PLAYER_MISSILE_2) {
+            merge_missiles(ROW[i + 1])
+            ROW[i] = CHAR_EMPTY_EMPTY;
+          // nincs semmi mehet lejjebb
+          } else {
+            ROW[i + 1] = ROW[i];
+            ROW[i] = CHAR_EMPTY_EMPTY;
+          }
+          break;
+        }
+        // player missile felfele megy
+        case CHAR_PATTERN_PLAYER_MISSILE:
+        case CHAR_PATTERN_PLAYER_MISSILE_2: {
+          // kimegy a palyarol
+          if (i == 0)
+            ROW[i] = CHAR_EMPTY_EMPTY;
+          // merge missile
+          else if (ROW[i - 1] == CHAR_PATTERN_ALIEN_MISSILE) {
+
+            ROW[i - 1] = CHAR_EMPTY_EMPTY;
+          } else if (ROW[i - 1] == CHAR_PATTERN_ALIEN) {
+            ROW[i - 1] = CHAR_EMPTY_EMPTY;
+            ROW[i] = CHAR_EMPTY_EMPTY;
+            kill_alien();
+
+            if (ROW[i] == CHAR_PATTERN_PLAYER_MISSILE)
+              MISSILES_MASK &= ~MISSILE_ONE;
+            else
+              MISSILES_MASK &= ~MISSILE_TWO;
+          } else {
+            ROW[i - 1] = ROW[i];
+            ROW[i] = CHAR_EMPTY_EMPTY;
+          }
+          break;
+        }
+        // ha merged missile van akkor splitelni kellene
+        case CHAR_PATTERN_MERGED_MISSILE:
+        case CHAR_PATTERN_MERGED_MISSILE_2: {
+          // itt is lehetnek meg erdekes esetek
+          ROW[i + 1] = CHAR_PATTERN_ALIEN_MISSILE;
+          if (ROW[i - 1] == CHAR_PATTERN_ALIEN) {
+            kill_alien();
+            if (ROW[i] == CHAR_MERGED_MISSILE) {
+              MISSILES_MASK &= ~MISSILE_ONE;
+              MERGE_MASK &= ~MERGE_ONE;
+            } else {
+              MISSILES_MASK &= ~MISSILE_TWO;
+              MERGE_MASK &= ~MERGE_TWO;
+            }
+          } else {
+            if (ROW[i] == CHAR_PATTERN_MERGED_MISSILE) {
+              ROW[i - 1] = p_missile;
+              MERGE_MASK &= ~MERGE_ONE;
+            } else {
+              ROW[i - 1] = p_missile2;
+              MERGE_MASK &= ~MERGE_TWO;
+            }
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    }
+  }
+}
+
+static void add_missile(unsigned char column, char row, char patternId) {
+  // meg kell nezni, hogy van-e alien ezen a ponton
+  // vagy cannon
+  if (row == 0) {
+      ROW1[column] = patternId;
+  } else if (row == 1) {
+      ROW2[column] = patternId;
+  }
+}
 
 // agyu lovese
 // 2 golyo lehet egyszerre palyan
-// az elso szabad agyuba teszi
+// az elso szabad slotba kerul
 
 static void shoot() {
     if (MISSILES_MASK == MISSILES_MAX)
@@ -469,50 +591,42 @@ static void shoot() {
     }
     
     unsigned char patternId = CHAR_PATTERN_PLAYER_MISSILE;
-    if (MISSILES_MASK == 1) {
+    if (MISSILES_MASK == MISSILE_ONE) {
         patternId = CHAR_PATTERN_PLAYER_MISSILE_2;
-        MISSILES_MASK |= 2;
+        MISSILES_MASK |= MISSILE_TWO;
     } else
-        MISSILES_MASK |= 1;
+        MISSILES_MASK |= MISSILE_ONE;
      
     
     CHARMAP[patternId][pos] = pattern;
-    add_missile(row, patternId);
+    add_missile(14, row, patternId);
     play_tune(TUNE_SHOOT); // shoot signal
     chars_missile_rewrite(patternId);
+}
+
+static unsigned char get_missile_pos(char row) {
+  unsigned char* ROW = NULL;
+  if (row == 0)
+    ROW = &ROW1[0];
+  else
+    ROW = &ROW2[0];
+
+  for (int i = ALIEN_PLAYGROUND - 1; i > 0; --i) {
+    if (ROW[i] == CHAR_PATTERN_ALIEN)
+      return i + 1;
+  }
+  return -1;
 }
 
 static void shoot_alien() {
     if (rnd_gen(100) > 100)
         return;
 
-    char col1 = 0;
-    char col2 = 0;
-    for (char i = 0; i <= ALIEN_PLAYGROUND; ++i) {
-        if (ROW1[i] == CHAR_PATTERN_ALIEN) {
-            col1++;
-        }
-        if (ROW2[i] == CHAR_PATTERN_ALIEN) {
-            col2++;
-        }
-    }
-    
-    char rnd = 0;
-    char column = rnd_gen(2);
-    if (column == 0) {
-        rnd = rnd_gen(col1);
-    } else {
-        rnd = rnd_gen(col2);
-        col2 = 0;
-        for (char i = 0; i <= ALIEN_PLAYGROUND; ++i) {
-            if (ROW2[i] == CHAR_PATTERN_ALIEN) {
-                ++col2;
-                //if (col2 =
-            }
-        }
-    }
-    
+    char row = rnd_gen(2);
+    unsigned char free_pos = get_missile_pos(row);
+    add_missile(free_pos, row, CHAR_PATTERN_ALIEN_MISSILE);
     play_tune(TUNE_SHOOT); // shoot signal
+    chars_missile_rewrite(CHAR_PATTERN_ALIEN_MISSILE);
 }
 
 //static void update_
@@ -558,6 +672,16 @@ int main(void)
 
         // loop of the game
         while (1) {
+
+            // if SHOOT_UPDATE_TIMER elapsed then move position of the missiles to down or up whether it's an alien missile or cannon missile
+            if (++shoot_cycle > SHOOT_UPDATE_TIMER) {
+                shoot_cycle = 0;
+
+                // if 
+
+                move_missiles();
+            }
+
             // if enough time passed, try to drop the current piece by one row
             if (++delay_cycle > LEVELS[level_current].delay) {
                 delay_cycle = 0;
@@ -576,7 +700,7 @@ int main(void)
             }
 
 
-            // if trying to move left or right, do so only if the piece does not leave or collide with the playfield
+            // if trying to move left or right
             int button = button_pressed();
             if (button == BUTTON_LEFT)
                 move_left();
@@ -595,7 +719,7 @@ int main(void)
 
         // playing some funeral tunes and displaying a game over screen
 #ifndef NO_AVR
-        //play_tune(TUNE_GAMEOVER);
+        play_tune(TUNE_GAMEOVER);
 #endif
         lcd_send_line1("    GAME OVER   ");
         lcd_send_line2("Click to restart");
