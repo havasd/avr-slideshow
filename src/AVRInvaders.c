@@ -480,36 +480,6 @@ typedef enum MissileMask MissileMask;
 
 static MissileMask MISSILES_MASK = MISSILE_NONE;
 
-enum Merges {
-  MERGE_NONE,
-  MERGE_ONE,
-  MERGE_TWO,
-  MERGE_MAX
-};
-typedef enum Merges Merges;
-
-static Merges MERGE_MASK = MERGE_NONE;
-// itt taroljuk, hogy milyen pattern van mergelve
-static unsigned char p_missile = 0;
-static unsigned char p_missile2 = 0;
-
-static unsigned char merge_missiles(unsigned char player_missile) {
-  unsigned char merge_pattern = CHAR_PATTERN_MERGED_MISSILE;
-  if (MERGE_MASK = MERGE_ONE) {
-    merge_pattern = CHAR_PATTERN_MERGED_MISSILE_2;
-    MERGE_MASK |= MERGE_TWO;
-    p_missile2 = player_missile;
-  } else {
-    MERGE_MASK |= MERGE_ONE;
-    p_missile = player_missile;
-  }
-
-  for (char i = 0; i < 8; ++i) {
-    CHARMAP[merge_pattern][i] = CHARMAP[player_missile][i] | CHARMAP[CHAR_PATTERN_ALIEN_MISSILE][i];
-  }
-  return merge_pattern;
-}
-
 static void move_ai_missiles() {
   for (unsigned char i = ALIEN_PLAYGROUND - 1; i > 0; --i) {
     for (unsigned char j = 0; j < 2; ++j) {
@@ -578,31 +548,6 @@ static void move_missiles() {
           } else if (ROW[i - 1] == CHAR_EMPTY_EMPTY) {
             ROW[i - 1] = ROW[i];
             ROW[i] = CHAR_EMPTY_EMPTY;
-          }
-          break;
-        }
-        // ha merged missile van akkor splitelni kellene
-        case CHAR_PATTERN_MERGED_MISSILE:
-        case CHAR_PATTERN_MERGED_MISSILE_2: {
-          // itt is lehetnek meg erdekes esetek
-          ROW[i + 1] = CHAR_PATTERN_ALIEN_MISSILE;
-          if (ROW[i - 1] == CHAR_PATTERN_ALIEN) {
-            kill_alien();
-            if (ROW[i] == CHAR_PATTERN_MERGED_MISSILE) {
-              MISSILES_MASK &= ~MISSILE_ONE;
-              MERGE_MASK &= ~MERGE_ONE;
-            } else {
-              MISSILES_MASK &= ~MISSILE_TWO;
-              MERGE_MASK &= ~MERGE_TWO;
-            }
-          } else {
-            if (ROW[i] == CHAR_PATTERN_MERGED_MISSILE) {
-              ROW[i - 1] = p_missile;
-              MERGE_MASK &= ~MERGE_ONE;
-            } else {
-              ROW[i - 1] = p_missile2;
-              MERGE_MASK &= ~MERGE_TWO;
-            }
           }
           break;
         }
@@ -692,7 +637,6 @@ static void reset_play_field() {
     new_invaders();
     memcpy(LEVELS, LEVELCAPS, sizeof LEVELCAPS);
     MISSILES_MASK = MISSILE_NONE;
-    MERGE_MASK = MERGE_NONE;
 }
 
 // MAIN ENTRY POINT ----------------------------------------------------------
