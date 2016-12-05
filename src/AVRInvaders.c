@@ -249,8 +249,8 @@ typedef struct {
 } level_t;
 
 #define LEVEL_NUM 6
-static level_t LEVELCAPS[] = { { 25, 5, 50 }, { 25, 10, 40 }, { 20, 15, 30 }, { 15, 20, 20 }, { 10, 30, 15 }, { 0, 0, 0 } };
-static level_t LEVELS[] = { { 25, 5, 50 }, { 25, 10, 40 }, { 20, 15, 30 }, { 15, 20, 20 }, { 10, 30, 15 }, { 0, 0, 0 } };
+static level_t LEVELCAPS[] = { { 25, 5, 60 }, { 25, 10, 50 }, { 20, 15, 40 }, { 15, 20, 30 }, { 10, 30, 20 }, { 0, 0, 0 } };
+static level_t LEVELS[] = { { 25, 5, 60 }, { 25, 10, 50 }, { 20, 15, 40 }, { 15, 20, 30 }, { 10, 30, 20 }, { 0, 0, 0 } };
 static int level_current = 0;
 static int delay_cycle = 0;
 static int wave_cycle = 0;
